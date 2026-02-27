@@ -53,44 +53,50 @@
         }
 
         .cabinet-modal {
-            background: url('场景/物件UI背景.png') no-repeat center center;
-            background-size: cover;
+            background-color: #e6dccf;
             color: #5c4a3a;
         }
-        .cabinet-modal .text-gray-800,
-        .cabinet-modal .text-gray-500 { color: #5c4a3a; }
-        .cabinet-modal .text-gray-400 { color: #6b5b4f; }
+        .cabinet-modal .text-gray-800 { color: #5c4a3a; }
+        .cabinet-modal .text-gray-400 { color: #8d7f73; }
+        
         .cabinet-shelf {
-            background: rgba(212, 196, 168, 0.35);
-            border: 1px solid #c4a882;
-            border-radius: 1rem;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.06);
-            padding: 0.5rem;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
         }
         .cabinet-slot {
-            background: #f0e9df;
-            border: 1px solid #d4c4a8;
+            background: #fdfbf7;
+            border: 2px solid #eaddcf;
             border-radius: 1rem;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             color: #5c4a3a;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            min-height: 72px;
+            aspect-ratio: 1 / 1.25;
             padding: 0.5rem;
             font-size: 11px;
+            font-weight: bold;
         }
-        .cabinet-slot--empty { color: #6b5b4f; font-size: 12px; }
+        .cabinet-slot--empty {
+            color: #8d7f73;
+        }
         .cabinet-empty-icon {
-            width: 2.5rem;
-            height: 2.5rem;
+            font-size: 1.8rem;
+            color: #8d7f73;
             margin-bottom: 0.25rem;
-            opacity: 0.85;
-            color: #6b5b4f;
+            opacity: 0.6;
         }
-        .cabinet-slot img { border-color: #d4c4a8; }
+        .cabinet-slot img { 
+            width: 100%;
+            height: auto;
+            max-height: 60%;
+            object-fit: contain;
+            margin-bottom: 4px;
+        }
 
         /* 导航切换动画 */
         .nav-item { transition: all 0.3s ease; }
@@ -239,7 +245,19 @@
 
         /* 宠物移动与房间热点样式 */
         .pet-can-move {
-            transition: bottom 0.4s ease, left 0.4s ease, transform 0.4s ease;
+            /* 稍微拉长 bottom/left 过渡时间，让移动更像“走路” */
+            transition: bottom 0.9s ease, left 0.9s ease, transform 0.3s ease;
+        }
+
+        /* 比卡丘在房间里走动时的轻微晃动（作用于容器） */
+        @keyframes petWalkMotion {
+            0%, 100% { transform: translate(-50%, 0) scale(1); }
+            25% { transform: translate(-50%, -2px) scale(1.02); }
+            50% { transform: translate(-50%, -4px) scale(1.03); }
+            75% { transform: translate(-50%, -2px) scale(1.02); }
+        }
+        .pet-anim-walk {
+            animation: petWalkMotion 0.9s ease-in-out infinite;
         }
 
         .room-hotspot {
@@ -251,6 +269,7 @@
             font-size: 10px;
             font-weight: 700;
             color: #374151;
+            transform: translate(-50%, -50%);
         }
 
         .room-hotspot-button {
@@ -319,20 +338,60 @@
             animation: petJumpLand 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
 
-        /* 性格胶囊：未选中 / 选中 */
-        .personality-pill {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1.5px solid #e5e7eb;
-            color: #6b7280;
+        /* 人格盲盒状态展示 */
+        #personality-display {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
         }
-        .personality-pill:hover {
-            border-color: #ffb5a7;
+        .personality-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #f3f4f6;
+        }
+        .personality-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .personality-name {
+            font-size: 12px;
+            font-weight: bold;
             color: #374151;
         }
-        .personality-pill.active {
-            background: rgba(255, 143, 171, 0.35);
-            border-color: #ff8fab;
-            color: #be185d;
+        .personality-tags {
+            font-size: 10px;
+            color: #6b7280;
+            display: flex;
+            gap: 4px;
+        }
+        .personality-tag {
+            background: #f3f4f6;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
+        /* 盲盒按钮动画 */
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-5deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .blind-box-shake {
+            animation: shake 0.5s ease-in-out infinite;
         }
 
         /* 气泡小尾巴与气泡同步显隐 */
@@ -372,8 +431,8 @@
 <div id="app-container">
     <!-- 内容槽：两个 Tab 共用同一高度，互不挤压 -->
     <div id="main-content-slot" class="flex-1 min-h-0 flex flex-col overflow-hidden">
-    <!-- ===== 视图 1：首页地图 (Tab 1) ===== -->
-    <div id="view-home" class="page-view active bg-[#fffaf0] p-6 h-full min-h-0 overflow-hidden">
+    <!-- ===== 视图 1：地图（作为二级页面） ===== -->
+    <div id="view-home" class="page-view bg-[#fffaf0] p-6 h-full min-h-0 overflow-hidden">
         <header class="text-center mb-4 pt-4 flex-shrink-0">
             <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
                 <i class="ph-fill ph-compass text-[#a2d2ff]"></i> 旅行足迹
@@ -420,10 +479,17 @@
                 </button>
             </div>
         </div>
+
+        <!-- 返回宠物小屋 -->
+        <div class="mt-4 flex justify-center">
+            <button id="btn-back-petroom" class="px-4 py-2 rounded-full text-xs font-bold text-gray-700 bg-white/90 border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition">
+                返回宠物小屋
+            </button>
+        </div>
     </div>
 
     <!-- ===== 视图 2：宠物页（宠物之家 + 橱柜 + 日记） ===== -->
-    <div id="view-petroom" class="page-view relative p-0 h-full min-h-0 overflow-hidden">
+    <div id="view-petroom" class="page-view active relative p-0 h-full min-h-0 overflow-hidden">
         <!-- 顶部栏：标题 + 状态 + 性格，半透明便于底图透出 -->
         <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-2 flex-shrink-0">
             <header class="text-center">
@@ -434,26 +500,40 @@
             <div id="pet-status-bar" class="mt-1 mb-2 text-center text-xs font-bold text-gray-600">
                 比卡丘正在准备出发中…
             </div>
-            <div id="personality-pills" class="flex justify-center gap-2 pointer-events-auto">
-                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="活泼">活泼</button>
-                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="贪吃">贪吃</button>
-                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="文艺">文艺</button>
+            
+            <!-- 人格盲盒与状态展示 -->
+            <div class="flex flex-col items-center gap-2 pointer-events-auto">
+                <div id="personality-display" class="hidden">
+                    <div class="personality-icon" id="p-icon">✨</div>
+                    <div class="personality-info">
+                        <div class="personality-name" id="p-name">未知人格</div>
+                        <div class="personality-tags" id="p-tags">
+                            <span class="personality-tag" id="p-tag1">未知</span>
+                            <span class="personality-tag" id="p-tag2">未知</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="btn-blind-box" class="bg-gradient-to-r from-[#ff9a9e] to-[#fad0c4] text-white px-4 py-2 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-1">
+                    <i class="ph-fill ph-gift"></i> 重抽人格盲盒
+                </button>
             </div>
         </div>
         <select id="pet-personality" class="hidden" aria-hidden="true">
-            <option value="活泼" selected>活泼</option>
-            <option value="贪吃">贪吃</option>
-            <option value="文艺">文艺</option>
+            <option value="小火苗">小火苗</option>
+            <option value="小灯泡">小灯泡</option>
+            <option value="小云朵">小云朵</option>
+            <option value="小石头">小石头</option>
         </select>
 
         <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
         <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
             <div id="room-scene" class="absolute top-0 left-0 h-full w-auto flex justify-center items-center" style="transform-origin: 0 0;">
                 <!-- 房间背景图：高度自适应，宽度允许超出 -->
-                <img src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
+                <img id="room-scene-bg" src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
 
                 <!-- 宠物主体 -->
-                <div id="pet-avatar-room" class="absolute bottom-[25%] left-[50%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
+                <div id="pet-avatar-room" class="absolute bottom-[20%] left-[60%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
                     <img id="pet-avatar-sprite" src="比卡丘动画导出/观察/flog_guancha_002.png" alt="旅行宠物" class="w-24 h-24 object-contain pointer-events-none select-none">
                 </div>
                 
@@ -463,24 +543,54 @@
                 </div>
                 <div class="absolute bottom-[46%] left-[50%] w-3 h-3 bg-white border-r-2 border-b-2 border-[#ff8fab] z-40 pointer-events-none bubble-tail opacity-0 transition-opacity duration-300" style="transform: translateX(-50%) rotate(45deg);"></div>
 
-                <!-- 可点击热点：书桌日记、橱柜、床（高亮显示） -->
+                <!-- 可点击热点：书桌日记、橱柜、小锅、地图挂画（高亮显示） -->
                 <div id="room-hotspots-layer" class="absolute inset-0 z-30 pointer-events-none">
-                    <button type="button" id="hotspot-bed" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 25%; right: 8%;" aria-label="休息">
+                    <!-- 地图挂画入口：墙上的空画框位置 -->
+                    <button
+                        type="button"
+                        id="hotspot-map"
+                        class="room-hotspot room-hotspot-highlight pointer-events-auto"
+                        aria-label="打开地图"
+                    >
                         <div class="room-hotspot-button">
-                            <span>🛏️</span>
-                            <span>休息</span>
+                            <span>🗺️</span>
+                            <span>地图</span>
                         </div>
                     </button>
-                    <button type="button" id="hotspot-diary" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 20%; right: 18%;" aria-label="打开旅行日记">
+                    <!-- 日记：靠近桌面书本区域（精确位置由 JS 根据底图尺寸计算） -->
+                    <button
+                        type="button"
+                        id="hotspot-diary"
+                        class="room-hotspot room-hotspot-highlight pointer-events-auto"
+                        aria-label="打开旅行日记"
+                    >
                         <div class="room-hotspot-button">
                             <span>📚</span>
                             <span>日记</span>
                         </div>
                     </button>
-                    <button type="button" id="hotspot-cabinet" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 18%; left: 28%;" aria-label="打开旅行橱柜">
+                    <!-- 橱柜：靠近房间左侧橱柜（精确位置由 JS 根据底图尺寸计算） -->
+                    <button
+                        type="button"
+                        id="hotspot-cabinet"
+                        class="room-hotspot room-hotspot-highlight pointer-events-auto"
+                        aria-label="打开旅行橱柜"
+                    >
                         <div class="room-hotspot-button">
                             <span>🎁</span>
                             <span>橱柜</span>
+                        </div>
+                    </button>
+                    <!-- 锅：靠近桌子前的锅/食物区域（精确位置由 JS 根据底图尺寸计算） -->
+                    <button
+                        type="button"
+                        id="hotspot-pot"
+                        class="room-hotspot room-hotspot-highlight pointer-events-auto"
+                        aria-label="闻一闻锅里的香味"
+                    >
+                        <div class="room-hotspot-button">
+                            <span>🍲</span>
+                            <span>小锅</span>
                         </div>
                     </button>
                 </div>
@@ -532,20 +642,7 @@
     </div>
     <!-- /main-content-slot -->
 
-    <!-- ===== 底部导航栏（参与文档流，固定高度） ===== -->
-    <nav class="flex-shrink-0 w-full h-20 bg-white/95 backdrop-blur-md rounded-t-[30px] shadow-[0_-15px_30px_rgba(0,0,0,0.04)] flex justify-around items-center px-6 pb-2 z-10 border-t border-gray-100">
-        <button class="nav-item active flex flex-col items-center gap-1" data-target="view-home">
-            <i class="ph-fill ph-map-trifold text-2xl"></i>
-            <span class="text-[10px] font-bold">地图</span>
-        </button>
-        <button class="nav-item flex flex-col items-center gap-1 text-gray-400" data-target="view-petroom">
-            <i class="ph-fill ph-house text-2xl relative">
-                <span id="pet-room-badge" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#9bdeac] rounded-full hidden"></span>
-                <span id="diary-badge" class="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span>
-            </i>
-            <span class="text-[10px] font-bold">宠物</span>
-        </button>
-    </nav>
+        <!-- 底部导航区域移除：留白由 app 外层背景承担 -->
 
     <!-- 通用放大查看弹层：用于橱柜 / 日记 -->
     <div id="modal-overlay" class="absolute inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
@@ -564,10 +661,66 @@
     const appState = {
         locations: [],
         cabinetItems: [],
-        petPersonality: '活泼',
-        petAvatars: { '活泼': '🐰', '贪吃': '🐻', '文艺': '🐱' },
+        petPersonality: '小火苗', // 默认人格
         currentActionInterval: null
     };
+
+    // --- 2x2 人格矩阵配置 ---
+    const PERSONALITY_TYPES = {
+        '小火苗': {
+            name: '小火苗',
+            icon: '🔥',
+            energy: 'extrovert', // 外向
+            emotion: 'emotional', // 感性
+            desc: '热情、冲动、高饱和暖色',
+            colorFilter: 'brightness(1.1) saturate(1.4) hue-rotate(-10deg)', // 暖红/橙色调
+            animSpeed: 0.8, // 动作快
+            reactionDelay: 0, // 即时反应
+            bubbleColor: '#ff9a9e',
+            textColor: '#be185d'
+        },
+        '小灯泡': {
+            name: '小灯泡',
+            icon: '�',
+            energy: 'extrovert', // 外向
+            emotion: 'rational', // 理性
+            desc: '好奇、自信、明亮科技感',
+            colorFilter: 'brightness(1.2) saturate(1.2) hue-rotate(45deg)', // 明亮黄色调
+            animSpeed: 0.8, // 动作快
+            reactionDelay: 800, // 思考延迟
+            bubbleColor: '#fcd34d',
+            textColor: '#b45309'
+        },
+        '小云朵': {
+            name: '小云朵',
+            icon: '☁️',
+            energy: 'introvert', // 内向
+            emotion: 'emotional', // 感性
+            desc: '温柔、敏感、马卡龙色',
+            colorFilter: 'brightness(1.05) saturate(0.8) hue-rotate(200deg)', // 柔和粉/紫色调
+            animSpeed: 1.4, // 动作慢
+            reactionDelay: 0, // 即时反应
+            bubbleColor: '#e9d5ff',
+            textColor: '#7e22ce'
+        },
+        '小石头': {
+            name: '小石头',
+            icon: '🪨',
+            energy: 'introvert', // 内向
+            emotion: 'rational', // 理性
+            desc: '沉稳、冷幽默、极简冷色',
+            colorFilter: 'grayscale(0.6) brightness(0.9) contrast(1.1)', // 冷灰/蓝色调
+            animSpeed: 1.5, // 动作慢
+            reactionDelay: 1000, // 较长思考延迟
+            bubbleColor: '#e5e7eb',
+            textColor: '#374151'
+        }
+    };
+    
+    // 获取当前人格配置
+    function getCurrentPersonality() {
+        return PERSONALITY_TYPES[appState.petPersonality] || PERSONALITY_TYPES['小火苗'];
+    }
 
     // --- OpenRouter AIGC 配置（通过 /api/chat 代理，Key 在服务端环境变量中） ---
     const AIGC_API_ENDPOINT = '/api/chat';
@@ -585,7 +738,13 @@
     const mapPinsContainer = document.getElementById('map-pins-container');
     
     const petPersonalitySelect = document.getElementById('pet-personality');
-    const personalityPills = document.querySelectorAll('.personality-pill');
+    const personalityDisplay = document.getElementById('personality-display');
+    const btnBlindBox = document.getElementById('btn-blind-box');
+    const pIcon = document.getElementById('p-icon');
+    const pName = document.getElementById('p-name');
+    const pTag1 = document.getElementById('p-tag1');
+    const pTag2 = document.getElementById('p-tag2');
+    
     const petAvatarRoom = document.getElementById('pet-avatar-room');
     const petAvatarSprite = document.getElementById('pet-avatar-sprite');
     const petActionBubble = document.getElementById('pet-action-bubble');
@@ -618,14 +777,188 @@
     const hotspotPot = document.getElementById('hotspot-pot');
     const hotspotDoor = document.getElementById('hotspot-door');
     const hotspotPlant = document.getElementById('hotspot-plant');
+    const hotspotMap = document.getElementById('hotspot-map');
+    const roomSceneBg = document.getElementById('room-scene-bg');
 
     const roomViewport = document.getElementById('room-viewport');
     const roomScene = document.getElementById('room-scene');
 
     const defaultPetPosition = {
-        bottom: '25%',
-        left: '50%'
+        bottom: '20%',
+        left: '60%'
     };
+
+    const roomHotspotDesignCoords = {
+        bed: {
+            x: 800,
+            y: 200
+        },
+        diary: {
+            x: 1574.4,
+            y: 864
+        },
+        cabinet: {
+            x: 537.6,
+            y: 194.4
+        }
+    };
+
+    // 【配置】房间热点坐标（百分比），可在此处调整位置
+    // 使用控制台输出的点击坐标来修正这里的值
+    const HOTSPOT_POSITIONS_PCT = {
+        door: { left: 50, top: 35 },  // 门口
+        pot:  { left: 16, top: 62 },  // 小锅
+        map:  { left: 22, top: 23 },  // 地图挂画（墙上空画框）
+        // 如果想覆盖 bed/diary/cabinet 的像素坐标，也可以在这里添加，例如：
+        // bed: { left: 50, top: 50 },
+    };
+
+    // 房间内用于行走路径的关键路过点与热点终点（使用 bottom/left 百分比）
+    const ROOM_WAYPOINTS = {
+        // 桌子草地中央偏上的位置（比卡丘从桌子附近出发时，先踩到这里）
+        centerFront: { bottom: '25%', left: '50%' },
+        // 左右两个辅助点，目前主要用于性格差异扩展
+        centerLeft:  { bottom: '26%', left: '40%' },
+        centerRight: { bottom: '26%', left: '60%' },
+        // 从桌子草地走向房间中部的边缘点
+        rugEdge:     { bottom: '30%', left: '50%' },
+        // 楼梯脚下的地面位置（去门口之前会经过这里）
+        stairsFoot:  { bottom: '45%', left: '60%' },
+        // 床/桌子一侧，比卡丘准备躺下前先靠近这里
+        bedSide:     { bottom: '30%', left: '48%' }
+    };
+
+    // 这里的百分比只需要和视觉大致对齐，便于后续微调；
+    // 行走路径和热点按钮的最终位置都会围绕这些点展开
+    const ROOM_TARGET_HOTSPOTS = {
+        bed:   { bottom: '32%', left: '50%' },
+        // 小锅：底部左侧的大锅位置
+        pot:   { bottom: '18%', left: '14%' },
+        // 门口：靠近上层平台右侧的门（与红框位置对齐为主）
+        door:  { bottom: '68%', left: '78%' }
+    };
+
+    const WANDER_AREAS = {
+        center:   ROOM_WAYPOINTS.centerFront,
+        bed_side: { bottom: '30%', left: '48%' },
+        door_side:{ bottom: '28%', left: '66%' }
+    };
+
+    function updateRoomHotspotPositions() {
+        if (!roomSceneBg) return;
+        const imgWidth = roomSceneBg.naturalWidth;
+        const imgHeight = roomSceneBg.naturalHeight;
+        const renderedWidth = roomSceneBg.clientWidth;
+        const renderedHeight = roomSceneBg.clientHeight;
+
+        if (!imgWidth || !imgHeight || !renderedWidth || !renderedHeight) return;
+
+        const scaleX = renderedWidth / imgWidth;
+        const scaleY = renderedHeight / imgHeight;
+
+        const positionHotspot = (el, key) => {
+            if (!el) return;
+            
+            // 优先使用百分比配置
+            if (HOTSPOT_POSITIONS_PCT && HOTSPOT_POSITIONS_PCT[key]) {
+                const pct = HOTSPOT_POSITIONS_PCT[key];
+                el.style.left = `${pct.left}%`;
+                el.style.top = `${pct.top}%`;
+                el.style.right = '';
+                el.style.bottom = '';
+                return;
+            }
+
+            const design = roomHotspotDesignCoords[key];
+            if (!design) return;
+
+            const currentX = design.x * scaleX;
+            const currentY = design.y * scaleY;
+
+            const leftPercent = (currentX / renderedWidth) * 100;
+            const topPercent = (currentY / renderedHeight) * 100;
+
+            el.style.left = `${leftPercent}%`;
+            el.style.top = `${topPercent}%`;
+            el.style.right = '';
+            el.style.bottom = '';
+        };
+
+        positionHotspot(hotspotBed, 'bed');
+        positionHotspot(hotspotDiary, 'diary');
+        positionHotspot(hotspotCabinet, 'cabinet');
+        positionHotspot(hotspotPot, 'pot');
+        positionHotspot(hotspotDoor, 'door');
+        positionHotspot(hotspotPlant, 'plant');
+        positionHotspot(hotspotMap, 'map');
+    }
+
+    if (roomSceneBg) {
+        if (roomSceneBg.complete) {
+            updateRoomHotspotPositions();
+        } else {
+            roomSceneBg.addEventListener('load', updateRoomHotspotPositions);
+        }
+    }
+
+    window.addEventListener('resize', updateRoomHotspotPositions);
+
+    // 根据当前人格与目标热点，构造一条从当前位置到目标的行走路径
+    function buildPathToHotspot(hotspotKey, personalityCfg) {
+        const p = personalityCfg || (typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null) || {};
+        const energy = p.energy || 'introvert';
+        const target = ROOM_TARGET_HOTSPOTS[hotspotKey];
+        if (!target) return [];
+
+        const path = [];
+
+        // === 床 / 休息：先从桌子草地边缘绕到床侧，再躺下 ===
+        if (hotspotKey === 'bed') {
+            // 离开桌子草地
+            path.push(ROOM_WAYPOINTS.rugEdge);
+            // 外向人格在地面上多晃一下
+            if (energy === 'extrovert') {
+                path.push(ROOM_WAYPOINTS.centerFront);
+            }
+            // 靠近床侧，再到最终休息点
+            path.push(ROOM_WAYPOINTS.bedSide, target);
+            return path;
+        }
+
+        // === 门口：沿地板经过楼梯脚再到门前，不再“飞向上层” ===
+        if (hotspotKey === 'door') {
+            path.push(ROOM_WAYPOINTS.rugEdge);
+            path.push(ROOM_WAYPOINTS.stairsFoot);
+            path.push(target);
+            return path;
+        }
+
+        // 小锅：从桌子草地边缘拐向大锅位置
+        if (hotspotKey === 'pot') {
+            path.push(ROOM_WAYPOINTS.rugEdge, target);
+            return path;
+        }
+
+        // 其他热点：直接走到目标点
+        path.push(target);
+        return path;
+    }
+
+    // 为“随便走走”构造一条轻量路径（不会离默认区域太远）
+    function buildWanderPath(areaKey, personalityCfg) {
+        const p = personalityCfg || (typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null) || {};
+        const energy = p.energy || 'introvert';
+        const target = WANDER_AREAS[areaKey] || ROOM_WAYPOINTS.centerFront;
+        const path = [];
+
+        if (energy === 'extrovert') {
+            path.push(ROOM_WAYPOINTS.centerFront, target);
+        } else {
+            path.push(target);
+        }
+
+        return path;
+    }
 
     // --- 房间场景拖拽与缩放 ---
     (function initRoomPanZoom() {
@@ -683,7 +1016,26 @@
             e.preventDefault();
         });
 
-        roomViewport.addEventListener('pointerup', () => {
+        roomViewport.addEventListener('pointerup', (e) => {
+            // 如果不是拖拽操作，且没有点中宠物（点中宠物由下方逻辑处理），则视为背景点击
+            if (!didPanThisGesture && !pointerDownOnPet) {
+                // 简单的调试辅助：输出点击位置的百分比坐标
+                if (roomSceneBg) {
+                    const rect = roomSceneBg.getBoundingClientRect();
+                    // 修正：确保基于图片实际渲染区域计算
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // 仅当点击在图片范围内时输出
+                    if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+                        const leftP = (x / rect.width) * 100;
+                        const topP = (y / rect.height) * 100;
+                        console.log(`%c[坐标拾取] Left: ${leftP.toFixed(2)}%, Top: ${topP.toFixed(2)}%`, 'color: #ff00ff; font-weight: bold; background: #f0f0f0; padding: 2px 4px; border-radius: 4px;');
+                        console.log('请将上述坐标填入代码中的 HOTSPOT_POSITIONS_PCT 配置中对应的 item');
+                    }
+                }
+            }
+
             if (pointerDownOnPet && !didPanThisGesture && typeof window.__triggerPetTapInteraction === 'function') {
                 ignoreNextPetClick = true;
                 window.__triggerPetTapInteraction();
@@ -747,6 +1099,12 @@
         inactivityTimer: null
     };
 
+    // 比卡丘在房间内“走路”的状态
+    const petWalk = {
+        isWalking: false,
+        stepTimer: null
+    };
+
     function updatePetStatus(text) {
         if (!petStatusBar) return;
         petStatusBar.textContent = text;
@@ -761,6 +1119,194 @@
             clearTimeout(petLife.inactivityTimer);
             petLife.inactivityTimer = null;
         }
+        // 清理行走相关的计时器，避免跨状态残留运动
+        if (typeof stopPetWalk === 'function') {
+            stopPetWalk();
+        }
+    }
+
+    // --- 基于人格的简单行为决策 ---
+    const HOTSPOT_BEHAVIOR_PRESETS = {
+        bed: {
+            position: { bottom: '32%', left: '50%' },
+            context: '在软软的床上伸了个大大的懒腰',
+            stayMs: 2600,
+            animationState: 'rest',
+            resultingState: PET_STATES.REST
+        },
+        pot: {
+            position: { bottom: '26%', left: '30%' },
+            context: '跑到锅边偷偷闻了一大口香味',
+            stayMs: 2600,
+            animationState: 'eat',
+            resultingState: PET_STATES.INTERACT
+        },
+        door: {
+            position: { bottom: '30%', left: '70%' },
+            context: '跑到门口，准备和主人一起出门探索',
+            stayMs: 800,
+            animationState: 'door',
+            resultingState: PET_STATES.INTERACT
+        }
+    };
+
+    function decidePersonalityBehavior(trigger) {
+        const p = getCurrentPersonality && getCurrentPersonality();
+        if (!p) return null;
+        const energy = p.energy;   // extrovert / introvert
+        const emotion = p.emotion; // emotional / rational
+
+        // 15 秒无操作，从呼吸状态出发
+        if (trigger === 'inactivity_from_idle_breath') {
+            if (energy === 'extrovert' && emotion === 'emotional') {
+                // 小火苗：更爱往门口凑
+                return { type: 'moveToHotspot', hotspot: 'door' };
+            }
+            if (energy === 'extrovert' && emotion === 'rational') {
+                // 小灯泡：更多会去“研究”锅里的东西
+                return { type: 'moveToHotspot', hotspot: 'pot' };
+            }
+            if (energy === 'introvert' && emotion === 'emotional') {
+                // 小云朵：喜欢回到床上窝着
+                return { type: 'moveToHotspot', hotspot: 'bed', resultingState: PET_STATES.REST };
+            }
+            if (energy === 'introvert' && emotion === 'rational') {
+                // 小石头：直接进入休息
+                return { type: 'rest' };
+            }
+        }
+
+        // 从“观察主人”状态发呆太久时，更偏向轻度闲逛或直接休息
+        if (trigger === 'inactivity_from_idle_observe') {
+            if (energy === 'extrovert' && emotion === 'emotional') {
+                return {
+                    type: 'wander',
+                    area: 'door_side',
+                    context: '忍不住在门口附近来回晃悠，期待下一次出发'
+                };
+            }
+            if (energy === 'extrovert' && emotion === 'rational') {
+                return {
+                    type: 'wander',
+                    area: 'center',
+                    context: '在房间中央慢慢踱步，回顾刚才的旅行路线'
+                };
+            }
+            if (energy === 'introvert' && emotion === 'emotional') {
+                return {
+                    type: 'wander',
+                    area: 'bed_side',
+                    context: '悄悄挪到床边，在柔软的角落里小范围地走来走去'
+                };
+            }
+            if (energy === 'introvert' && emotion === 'rational') {
+                return {
+                    type: 'rest',
+                    context: '决定先缩成一团安静休息一下'
+                };
+            }
+        }
+
+        // 完成一次旅行打卡后
+        if (trigger === 'after_travel') {
+            if (energy === 'extrovert' && emotion === 'emotional') {
+                return { type: 'moveToHotspot', hotspot: 'door' };
+            }
+            if (energy === 'extrovert' && emotion === 'rational') {
+                // 暂时用“锅”代表对道具/环境细节的好奇
+                return { type: 'moveToHotspot', hotspot: 'pot' };
+            }
+            if (energy === 'introvert' && emotion === 'emotional') {
+                return { type: 'moveToHotspot', hotspot: 'bed', resultingState: PET_STATES.REST };
+            }
+            if (energy === 'introvert' && emotion === 'rational') {
+                return { type: 'stay_observe' };
+            }
+        }
+
+        // 进入宠物房时的轻微差异：外向的更主动观察你
+        if (trigger === 'enter_room') {
+            if (energy === 'extrovert') {
+                return { type: 'stay_observe' };
+            }
+        }
+
+        return null;
+    }
+
+    function applyBehaviorDecision(decision) {
+        if (!decision) return;
+
+        if (decision.type === 'moveToHotspot') {
+            const preset = HOTSPOT_BEHAVIOR_PRESETS[decision.hotspot] || null;
+            const personalityCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+            const pathPoints = buildPathToHotspot(decision.hotspot, personalityCfg);
+
+            const position = decision.position || (preset && preset.position);
+            const stayMs = decision.stayMs !== undefined
+                ? decision.stayMs
+                : (preset ? preset.stayMs : 2600);
+            const animationState = decision.animationState || (preset && preset.animationState) || 'interact';
+            const resultingState = decision.resultingState || (preset && preset.resultingState) || PET_STATES.INTERACT;
+            const context = decision.context || (preset && preset.context) || null;
+
+            if (pathPoints && pathPoints.length) {
+                walkPetAlongPath(pathPoints, {
+                    contextOverride: context,
+                    stayMs,
+                    animationState,
+                    resetToDefault: true,
+                    onArrive: () => setPetState(resultingState, { skipInactivityReset: false })
+                });
+            } else if (position) {
+                movePetToSpot(position, context, stayMs, animationState);
+                setPetState(resultingState);
+            } else {
+                if (context) {
+                    triggerAIPetAction(context);
+                } else {
+                    triggerAIPetAction();
+                }
+                setPetState(resultingState);
+            }
+            return;
+        }
+
+        if (decision.type === 'rest') {
+            triggerAIPetAction(decision.context || '决定先小睡一会儿，恢复体力');
+            setPetState(PET_STATES.REST);
+            return;
+        }
+
+        if (decision.type === 'stay_observe') {
+            if (decision.context) {
+                triggerAIPetAction(decision.context);
+            } else {
+                triggerAIPetAction();
+            }
+            setPetState(PET_STATES.IDLE_OBSERVE);
+            return;
+        }
+
+        if (decision.type === 'wander') {
+            const personalityCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+            const pathPoints = buildWanderPath(decision.area || 'center', personalityCfg);
+            const context = decision.context || null;
+
+            if (pathPoints && pathPoints.length) {
+                walkPetAlongPath(pathPoints, {
+                    contextOverride: context,
+                    stayMs: 0,
+                    animationState: 'idle_breath',
+                    resetToDefault: false,
+                    onArrive: () => setPetState(PET_STATES.IDLE_BREATH, { skipInactivityReset: false })
+                });
+            } else if (context) {
+                triggerAIPetAction(context);
+                setPetState(PET_STATES.IDLE_BREATH);
+            }
+            return;
+        }
     }
 
     function schedulePetTransition(targetState, delayMs) {
@@ -774,12 +1320,28 @@
     }
 
     function scheduleInactivityFlow() {
-        // 15 秒无交互：从呼吸 -> 观察；再 15 秒：观察 -> 休息
+        // 15 秒无交互后，根据当前人格做一次简单决策；无配置时退回旧逻辑
         if (petLife.inactivityTimer) {
             clearTimeout(petLife.inactivityTimer);
         }
         petLife.inactivityTimer = setTimeout(() => {
+            // 行走过程中不触发额外的性格决策，避免“走一半睡着/转场”
+            if (petWalk && petWalk.isWalking) return;
+
             if (petLife.current === PET_STATES.REST) return;
+
+            if (petLife.current === PET_STATES.IDLE_BREATH || petLife.current === PET_STATES.IDLE_OBSERVE) {
+                const triggerKey = petLife.current === PET_STATES.IDLE_BREATH
+                    ? 'inactivity_from_idle_breath'
+                    : 'inactivity_from_idle_observe';
+                const decision = decidePersonalityBehavior(triggerKey);
+                if (decision) {
+                    applyBehaviorDecision(decision);
+                    return;
+                }
+            }
+
+            // 兜底：保持之前的固定行为链路
             if (petLife.current === PET_STATES.IDLE_BREATH) {
                 setPetState(PET_STATES.IDLE_OBSERVE, { skipInactivityReset: true });
                 petLife.inactivityTimer = setTimeout(() => {
@@ -897,62 +1459,195 @@
         return null;
     }
 
-    // --- 性格选择：胶囊选项 ---
-    function setPersonalityPillActive(value) {
-        personalityPills.forEach((pill) => {
-            if (pill.getAttribute('data-value') === value) {
-                pill.classList.add('active');
-            } else {
-                pill.classList.remove('active');
+    // --- 人格盲盒与状态展示逻辑 ---
+    function updatePersonalityDisplay() {
+        const p = getCurrentPersonality();
+        if (!p) return;
+        
+        // 更新 UI 文本
+        if (pName) pName.textContent = p.name;
+        if (pIcon) pIcon.textContent = p.icon;
+        
+        // 更新标签
+        if (pTag1) {
+            pTag1.textContent = p.energy === 'extrovert' ? '外向' : '内向';
+            pTag1.className = `personality-tag ${p.energy === 'extrovert' ? 'text-red-500 bg-red-50' : 'text-blue-500 bg-blue-50'}`;
+        }
+        if (pTag2) {
+            pTag2.textContent = p.emotion === 'emotional' ? '感性' : '理性';
+            pTag2.className = `personality-tag ${p.emotion === 'emotional' ? 'text-pink-500 bg-pink-50' : 'text-purple-500 bg-purple-50'}`;
+        }
+        
+        // 应用视觉滤镜（模拟皮肤/色调）
+        if (petAvatarSprite) {
+            petAvatarSprite.style.filter = p.colorFilter || 'none';
+            petAvatarSprite.style.transition = 'filter 0.5s ease';
+        }
+
+        // 显示状态栏
+        if (personalityDisplay) personalityDisplay.classList.remove('hidden');
+    }
+
+    // 初始化默认人格
+    updatePersonalityDisplay();
+
+    // 盲盒生成器点击事件
+    if (btnBlindBox) {
+        btnBlindBox.addEventListener('click', () => {
+            // 播放摇晃动画
+            btnBlindBox.classList.add('blind-box-shake');
+            setTimeout(() => btnBlindBox.classList.remove('blind-box-shake'), 500);
+            
+            // 随机抽取
+            const keys = Object.keys(PERSONALITY_TYPES);
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+            
+            appState.petPersonality = randomKey;
+            
+            // 同步 select（如果还在用的话）
+            if (petPersonalitySelect) {
+                petPersonalitySelect.value = randomKey;
+            }
+            
+            // 更新 UI 和视觉
+            updatePersonalityDisplay();
+            
+            // 触发反馈交互
+            markPetInteraction();
+            triggerAIPetAction('感觉像是换了个新灵魂！✨');
+            setPetState(PET_STATES.INTERACT);
+            
+            // 播放特效动画
+            if (petAvatarRoom) {
+                petAvatarRoom.style.transform = 'translate(-50%, 0) scale(1.2) rotate(360deg)';
+                setTimeout(() => { petAvatarRoom.style.transform = 'translateX(-50%)'; }, 600);
             }
         });
     }
-    setPersonalityPillActive(appState.petPersonality);
 
-    personalityPills.forEach((pill) => {
-        pill.addEventListener('click', () => {
-            const value = pill.getAttribute('data-value');
-            if (!value) return;
-            appState.petPersonality = value;
-            if (petPersonalitySelect) {
-                petPersonalitySelect.value = value;
-                petPersonalitySelect.dispatchEvent(new Event('change'));
-            }
-            setPersonalityPillActive(value);
+    // 兼容旧的 Select change 事件（如果还需要）
+    if (petPersonalitySelect) {
+        petPersonalitySelect.addEventListener('change', (e) => {
+            appState.petPersonality = e.target.value;
+            updatePersonalityDisplay();
+            markPetInteraction();
+            triggerAIPetAction();
+            setPetState(PET_STATES.INTERACT);
         });
-    });
+    }
 
     // --- 房间内宠物移动与热点动效 ---
-    function movePetToSpot(position, contextOverride, stayMs = 2600, animationState = null) {
-        if (!petAvatarRoom) return;
-
-        if (position && typeof position.bottom === 'string' && typeof position.left === 'string') {
-            petAvatarRoom.style.bottom = position.bottom;
-            petAvatarRoom.style.left = position.left;
+    function stopPetWalk() {
+        if (petWalk.stepTimer) {
+            clearTimeout(petWalk.stepTimer);
+            petWalk.stepTimer = null;
         }
-
-        if (contextOverride) {
-            triggerAIPetAction(contextOverride);
-        } else {
-            triggerAIPetAction();
+        petWalk.isWalking = false;
+        if (petAvatarRoom) {
+            petAvatarRoom.classList.remove('pet-anim-walk');
         }
+    }
+
+    function getCurrentPetPosition() {
+        if (!petAvatarRoom) {
+            return { ...defaultPetPosition };
+        }
+        const bottom = petAvatarRoom.style.bottom || defaultPetPosition.bottom;
+        const left = petAvatarRoom.style.left || defaultPetPosition.left;
+        return { bottom, left };
+    }
+
+    // 通用：让比卡丘按路径依次移动到多个点
+    function walkPetAlongPath(pathPoints, options = {}) {
+        if (!petAvatarRoom || !Array.isArray(pathPoints) || pathPoints.length === 0) return;
+
+        stopPetWalk();
+        petWalk.isWalking = true;
+
+        const personalityCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        const speedMultiplier = (personalityCfg && personalityCfg.animSpeed) || 1;
+        const baseStepDuration = options.baseStepDurationMs || 700;
+        const stepDuration = Math.max(200, Math.floor(baseStepDuration * speedMultiplier));
+
+        const contextOverride = options.contextOverride || null;
+        const onArrive = typeof options.onArrive === 'function' ? options.onArrive : null;
+        const stayMs = typeof options.stayMs === 'number' ? options.stayMs : 0;
+        const resetToDefault = !!options.resetToDefault;
+        const animationState = options.animationState || null;
 
         if (animationState) {
             playPetAnimation(animationState, { loop: false, frameInterval: 220 });
         }
 
-        // 到达目标时播放跳跃落地动效
-        petAvatarRoom.classList.remove('pet-anim-jump');
-        void petAvatarRoom.offsetWidth;
-        petAvatarRoom.classList.add('pet-anim-jump');
-        setTimeout(() => petAvatarRoom.classList.remove('pet-anim-jump'), 450);
+        petAvatarRoom.classList.add('pet-anim-walk');
 
-        if (stayMs > 0) {
-            setTimeout(() => {
-                petAvatarRoom.style.bottom = defaultPetPosition.bottom;
-                petAvatarRoom.style.left = defaultPetPosition.left;
-            }, stayMs);
-        }
+        let index = 0;
+        const step = () => {
+            if (!petAvatarRoom) {
+                stopPetWalk();
+                return;
+            }
+            if (index >= pathPoints.length) {
+                petWalk.isWalking = false;
+                petWalk.stepTimer = null;
+                petAvatarRoom.classList.remove('pet-anim-walk');
+
+                if (contextOverride !== null) {
+                    triggerAIPetAction(contextOverride);
+                } else {
+                    triggerAIPetAction();
+                }
+
+                if (onArrive) {
+                    onArrive();
+                }
+
+                if (resetToDefault && stayMs > 0) {
+                    setTimeout(() => {
+                        if (!petAvatarRoom) return;
+                        petAvatarRoom.style.bottom = defaultPetPosition.bottom;
+                        petAvatarRoom.style.left = defaultPetPosition.left;
+                    }, stayMs);
+                }
+                return;
+            }
+
+            const point = pathPoints[index];
+            if (point && typeof point.bottom === 'string' && typeof point.left === 'string') {
+                petAvatarRoom.style.bottom = point.bottom;
+                petAvatarRoom.style.left = point.left;
+            }
+
+            index += 1;
+            petWalk.stepTimer = setTimeout(step, stepDuration);
+        };
+
+        step();
+    }
+
+    // 保持向后兼容的封装：让比卡丘走到一个点，再根据 stayMs 回到默认位置
+    function movePetToSpot(position, contextOverride, stayMs = 2600, animationState = null) {
+        if (!petAvatarRoom) return;
+
+        const targetPosition = position && typeof position.bottom === 'string' && typeof position.left === 'string'
+            ? position
+            : { ...defaultPetPosition };
+
+        const pathPoints = [targetPosition];
+
+        walkPetAlongPath(pathPoints, {
+            contextOverride,
+            stayMs,
+            animationState,
+            resetToDefault: true,
+            onArrive: () => {
+                // 到达目标时播放跳跃落地动效
+                petAvatarRoom.classList.remove('pet-anim-jump');
+                void petAvatarRoom.offsetWidth;
+                petAvatarRoom.classList.add('pet-anim-jump');
+                setTimeout(() => petAvatarRoom.classList.remove('pet-anim-jump'), 450);
+            }
+        });
     }
 
     function wiggleHotspot(buttonEl) {
@@ -988,22 +1683,64 @@
     }
 
     function openCabinetModal() {
-        if (!cabinetGrid) return;
-        const count = (appState.cabinetItems && appState.cabinetItems.length) || cabinetGrid.querySelectorAll('[data-cabinet-item]').length;
-        const emptyHint = count === 0 ? '<p class="text-center text-[11px] text-gray-500 py-2">带我去打卡，解锁第一件纪念品吧~</p>' : '';
+        // 直接根据 appState.cabinetItems 生成内容，不再依赖 hidden DOM
+        const totalSlots = 12; // 3 rows * 4 cols
+        const items = appState.cabinetItems || [];
+        const count = items.length;
+        
+        let gridHTML = '';
+        for (let i = 0; i < totalSlots; i++) {
+            const item = items[i];
+            if (item) {
+                // 已解锁
+                const label = item.scene ? item.scene.label : item.location;
+                // 优先使用场景图，没有则用默认图
+                const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg'; 
+                
+                gridHTML += `
+                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm">
+                        <img src="${imgSrc}" alt="${label}" class="drop-shadow-sm">
+                        <span class="truncate w-full">${label}</span>
+                    </div>
+                `;
+            } else {
+                // 未解锁
+                gridHTML += `
+                    <div class="cabinet-slot cabinet-slot--empty">
+                        <i class="ph-bold ph-server text-3xl mb-1 opacity-40"></i>
+                        <span class="scale-90">去旅行解锁</span>
+                    </div>
+                `;
+            }
+        }
+
+        const emptyHint = count === 0 ? 
+            '<div class="text-center text-xs text-[#8d7f73] font-bold mt-4 mb-2">带我去打卡，解锁第一件纪念品吧~</div>' : 
+            '';
+
         const bodyHTML = `
-            <div class="cabinet-modal-content space-y-3 text-xs">
-                <div class="flex items-baseline justify-between text-[11px]" style="color:#5c4a3a">
-                    <span class="font-bold">我的旅行橱柜</span>
-                    <span>已收集 <span class="font-semibold" style="color:#b85c6f">${count}</span> 件小物件</span>
+            <div class="flex flex-col h-full px-2">
+                <!-- 头部统计 -->
+                <div class="flex items-center justify-between mb-4 mt-1">
+                    <span class="text-base font-bold text-[#5c4a3a]">我的旅行橱柜</span>
+                    <span class="text-xs text-[#8d7f73] font-bold">已收集 <span class="text-[#b85c6f] text-sm">${count}</span> 件小物件</span>
                 </div>
+                
                 ${emptyHint}
-                <div class="cabinet-shelf grid grid-cols-4 gap-2">
-                    ${cabinetGrid.innerHTML}
+                
+                <!-- 物品网格 -->
+                <div class="grid grid-cols-4 gap-3 overflow-y-auto no-scrollbar pb-4">
+                    ${gridHTML}
                 </div>
-                <p class="text-[10px] text-right" style="color:#6b5b4f">打卡越多，橱柜越满哦~</p>
+                
+                <!-- 底部提示 -->
+                <div class="mt-auto pt-3 text-right">
+                    <p class="text-[10px] text-[#8d7f73] opacity-80">打卡越多，橱柜越满哦~</p>
+                </div>
             </div>
         `;
+        
+        // 这里的 variant='cabinet' 已经在 openModal 里处理了 modalPanel 的 class
         openModal('旅行橱柜', bodyHTML, 'cabinet');
     }
 
@@ -1027,6 +1764,14 @@
         triggerAIPetAction();
         setPetState(PET_STATES.IDLE_WAIT);
 
+        // 根据人格在进入房间时做一次轻微行为差异
+        const enterDecision = decidePersonalityBehavior('enter_room');
+        if (enterDecision) {
+            applyBehaviorDecision(enterDecision);
+        }
+
+        updateRoomHotspotPositions();
+
         const petViewEl = document.getElementById('view-petroom');
         if (petViewEl) {
             petViewEl.classList.add('entrance');
@@ -1048,35 +1793,31 @@
         // 离开宠物 Tab 时，暂停计时器，避免后台乱跳状态
         clearPetTimers();
         clearInterval(appState.currentActionInterval);
+        if (typeof stopPetWalk === 'function') {
+            stopPetWalk();
+        }
     }
 
-    // --- 导航切换逻辑 ---
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            navItems.forEach(nav => {
-                nav.classList.remove('active');
-                nav.classList.add('text-gray-400');
-            });
-            item.classList.add('active');
-            item.classList.remove('text-gray-400');
-            
-            const targetId = item.getAttribute('data-target');
-            views.forEach(view => view.classList.remove('active'));
-            const targetView = document.getElementById(targetId);
-            if (targetView) targetView.classList.add('active');
+    // --- 视图切换：宠物小屋 <-> 地图 ---
+    function showPetRoom() {
+        views.forEach(view => view.classList.remove('active'));
+        const petView = document.getElementById('view-petroom');
+        if (petView) {
+            petView.classList.add('active');
+            petView.scrollTop = 0;
+        }
+        enterPetRoom();
+    }
 
-            if (targetId === 'view-petroom') {
-                diaryBadge.classList.add('hidden');
-                petRoomBadge.classList.add('hidden');
-                if (actionDiaryBadge) actionDiaryBadge.classList.add('hidden');
-                if (actionCabinetBadge) actionCabinetBadge.classList.add('hidden');
-                enterPetRoom();
-            } else {
-                leavePetRoom();
-            }
-            if (targetView && targetView.scrollTop !== undefined) targetView.scrollTop = 0;
-        });
-    });
+    function showMap() {
+        views.forEach(view => view.classList.remove('active'));
+        const mapView = document.getElementById('view-home');
+        if (mapView) {
+            mapView.classList.add('active');
+            mapView.scrollTop = 0;
+        }
+        leavePetRoom();
+    }
 
     if (modalOverlay) {
         modalOverlay.addEventListener('click', (event) => {
@@ -1097,6 +1838,16 @@
         hotspotDiary.addEventListener('click', (event) => {
             event.stopPropagation();
             openDiaryModal();
+        });
+    }
+
+    // 地图挂画入口：点击从宠物小屋进入地图
+    if (hotspotMap) {
+        hotspotMap.addEventListener('click', (event) => {
+            event.stopPropagation();
+            wiggleHotspot(hotspotMap);
+            markPetInteraction();
+            showMap();
         });
     }
 
@@ -1124,13 +1875,25 @@
             event.stopPropagation();
             wiggleHotspot(hotspotBed);
             markPetInteraction();
-            movePetToSpot(
-                { bottom: '32%', left: '50%' },
-                '在软软的床上伸了个大大的懒腰',
-                2600,
-                'rest'
-            );
-            setPetState(PET_STATES.REST);
+            const pCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+            const path = buildPathToHotspot('bed', pCfg);
+            if (path && path.length) {
+                walkPetAlongPath(path, {
+                    contextOverride: '在软软的床上伸了个大大的懒腰',
+                    stayMs: 2600,
+                    animationState: 'rest',
+                    resetToDefault: true,
+                    onArrive: () => setPetState(PET_STATES.REST)
+                });
+            } else {
+                movePetToSpot(
+                    { bottom: '32%', left: '50%' },
+                    '在软软的床上伸了个大大的懒腰',
+                    2600,
+                    'rest'
+                );
+                setPetState(PET_STATES.REST);
+            }
         });
     }
 
@@ -1139,13 +1902,25 @@
             event.stopPropagation();
             wiggleHotspot(hotspotPot);
             markPetInteraction();
-            movePetToSpot(
-                { bottom: '26%', left: '30%' },
-                '跑到锅边偷偷闻了一大口香味',
-                2600,
-                'eat'
-            );
-            setPetState(PET_STATES.INTERACT);
+            const pCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+            const path = buildPathToHotspot('pot', pCfg);
+            if (path && path.length) {
+                walkPetAlongPath(path, {
+                    contextOverride: '跑到锅边偷偷闻了一大口香味',
+                    stayMs: 2600,
+                    animationState: 'eat',
+                    resetToDefault: true,
+                    onArrive: () => setPetState(PET_STATES.INTERACT)
+                });
+            } else {
+                movePetToSpot(
+                    { bottom: '26%', left: '30%' },
+                    '跑到锅边偷偷闻了一大口香味',
+                    2600,
+                    'eat'
+                );
+                setPetState(PET_STATES.INTERACT);
+            }
         });
     }
 
@@ -1154,22 +1929,30 @@
             event.stopPropagation();
             wiggleHotspot(hotspotDoor);
             markPetInteraction();
-            movePetToSpot(
-                { bottom: '30%', left: '70%' },
-                '跑到门口，准备和主人一起出门探索',
-                800,
-                'door'
-            );
-            setPetState(PET_STATES.INTERACT);
+            const pCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+            const path = buildPathToHotspot('door', pCfg);
+            // 到达门口后仅做互动与提示，不再强制跳转到地图页
+            const arriveAtDoor = () => {
+                setPetState(PET_STATES.INTERACT);
+            };
 
-            setTimeout(() => {
-                const homeNav = Array.from(navItems).find(
-                    (item) => item.getAttribute('data-target') === 'view-home'
+            if (path && path.length) {
+                walkPetAlongPath(path, {
+                    contextOverride: '跑到门口，轻轻探出头看了看门外的世界',
+                    stayMs: 800,
+                    animationState: 'door',
+                    resetToDefault: true,
+                    onArrive: arriveAtDoor
+                });
+            } else {
+                movePetToSpot(
+                    ROOM_TARGET_HOTSPOTS.door,
+                    '跑到门口，轻轻探出头看了看门外的世界',
+                    800,
+                    'door'
                 );
-                if (homeNav) {
-                    homeNav.click();
-                }
-            }, 350);
+                arriveAtDoor();
+            }
         });
     }
 
@@ -1264,6 +2047,8 @@
         }
 
         const scene = getSceneAsset(location);
+        const existingCabinetItem = findCabinetItem(scene, location);
+        const isFirstUnlock = !existingCabinetItem;
 
         // 2. 生成日记
         generateDiaryEntry(location, diaryText, scene);
@@ -1272,11 +2057,13 @@
         triggerAIPetAction(`刚才去了${location}`);
         setPetState(PET_STATES.INTERACT);
         petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
-        if (actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+        if (isFirstUnlock && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
         diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
-        addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
-        showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
+        if (isFirstUnlock) {
+            addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
+            showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
+        }
         playExcitedAnimation();                 // 宠物播放一次兴奋动画
 
         if (usedFallback) {
@@ -1510,6 +2297,11 @@
     function triggerAIPetAction(contextOverride = null) {
         clearInterval(appState.currentActionInterval);
 
+        // 行走过程中，如果没有特别上下文，就尽量少冒泡，避免干扰视觉
+        if (petWalk && petWalk.isWalking && !contextOverride) {
+            return;
+        }
+
         const showBubbleShort = (text) => {
             if (petActionBubble) {
                 petActionBubble.innerHTML = text;
@@ -1528,23 +2320,29 @@
             const lastLocation = hasTraveled ? appState.locations[appState.locations.length - 1] : '';
 
             const aiTemplates = {
-                '活泼': [
-                    "正在房间里蹦蹦跳跳 🎵",
-                    "正在收拾背包，准备下一次出发！",
-                    hasTraveled ? `好想再去一次【${lastLocation}】玩啊！` : "好想出去玩啊！",
-                    hasTraveled ? `在看【${lastLocation}】拍的照片~ 📷` : "在做热身运动..."
+                '小火苗': [
+                    "冲冲冲！下一个目的地是哪里？🔥",
+                    "刚刚那只蝴蝶飞得好快，我要追上它！",
+                    hasTraveled ? `我超级喜欢【${lastLocation}】，太热闹了！` : "快带我出去玩嘛！(跳来跳去)",
+                    "只要和你在一起，去哪里都开心！✨"
                 ],
-                '贪吃': [
-                    "肚子咕咕叫了，想吃零食 🍔",
-                    "正在做梦，梦里全是好吃的 💤",
-                    hasTraveled ? `【${lastLocation}】有什么特产美食呢？🤤` : "在翻冰箱...",
-                    hasTraveled ? `回味着在【${lastLocation}】吃的大餐~` : "喝了一大口果汁 🧃"
+                '小灯泡': [
+                    "根据我的计算，今天的湿度很适合出门。💡",
+                    "正在分析刚才那个路标的设计逻辑...",
+                    hasTraveled ? `【${lastLocation}】的建筑结构很有趣。` : "我的电池充满电了。",
+                    "效率第一，我们现在的路线是最优解吗？"
                 ],
-                '文艺': [
-                    "安静地发呆，思考旅行的意义 🍃",
-                    "正在写随笔日记 ✍️",
-                    hasTraveled ? `【${lastLocation}】的风景真让我难忘。` : "在听舒缓的音乐 🎧",
-                    hasTraveled ? `在画一幅【${lastLocation}】的风景画 🎨` : "翻阅着地理杂志..."
+                '小云朵': [
+                    "今天的风好温柔啊...☁️",
+                    "刚才路边的小花看起来有点孤单。",
+                    hasTraveled ? `有点想念【${lastLocation}】的那片云。` : "不想动...就在这里发呆好不好？",
+                    "只要静静地陪着你就很好了。"
+                ],
+                '小石头': [
+                    "嗯...这里挺安静的。🪨",
+                    "保持稳定，不要大惊小怪。",
+                    hasTraveled ? `【${lastLocation}】...还行吧。` : "我在思考宇宙的尽头。",
+                    "（默默地看着你）"
                 ]
             };
 
@@ -1555,7 +2353,23 @@
             return pool ? pool[Math.floor(Math.random() * pool.length)] : '正在期待旅行... ✨';
         };
 
-        showBubbleShort(generateText());
+        const p = getCurrentPersonality();
+        const delay = p.reactionDelay || 0;
+        
+        // 理性人格增加“思考”延迟
+        if (delay > 0) {
+            if (petActionBubble) {
+                petActionBubble.innerHTML = '...';
+                petActionBubble.style.opacity = '1';
+                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
+            }
+            // 播放思考动作（如果有）或暂停一下
+            setTimeout(() => {
+                showBubbleShort(generateText());
+            }, delay);
+        } else {
+            showBubbleShort(generateText());
+        }
     }
 
     // --- 宠物序列帧动画：多状态管理 ---
@@ -1595,7 +2409,12 @@
         if (!frames || !frames.length) return;
 
         const loop = options.loop !== undefined ? options.loop : stateKey === 'idle_breath';
-        const frameInterval = options.frameInterval || (stateKey === 'idle_breath' ? 800 : 200);
+        const pConfig = getCurrentPersonality();
+        // 根据人格能量值调整基础帧率：外向(0.8)快，内向(1.5)慢
+        const baseInterval = stateKey === 'idle_breath' ? 800 : 200;
+        const speedMultiplier = pConfig.animSpeed || 1.0;
+        const frameInterval = options.frameInterval || Math.floor(baseInterval * speedMultiplier);
+        
         const maxCycles = options.cycles || 2;
 
         // 切换图片帧
@@ -1686,6 +2505,14 @@
             if (petLife.current === PET_STATES.IDLE_OBSERVE) {
                 setPetState(PET_STATES.IDLE_BREATH);
             }
+        });
+    }
+
+    // 地图页返回宠物小屋按钮
+    const btnBackPetroom = document.getElementById('btn-back-petroom');
+    if (btnBackPetroom) {
+        btnBackPetroom.addEventListener('click', () => {
+            showPetRoom();
         });
     }
 
@@ -1869,11 +2696,12 @@
             `- 地点：${location}${flavorText}`,
             `- 时间：${date} ${timeOfDay}`,
             `- 你的性格：${personality}`,
-            `  * 活泼：喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。`,
-            `  * 贪吃：三句话离不开吃，形容词多与食物有关（如“像果冻一样软的云”），关注气味。`,
-            `  * 文艺：心思细腻，喜欢观察光影、微风，用词优美，略带一点点忧郁或深沉。`,
+            `  * 小火苗：热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。`,
+            `  * 小灯泡：理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。`,
+            `  * 小云朵：感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。`,
+            `  * 小石头：理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。`,
             `\n【写作要求】`,
-            `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**（例如：屋檐下的一只懒猫、路边摊冒出的热气、一片形状奇怪的树叶、远处传来的自行车的铃声）。`,
+            `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**。`,
             `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
             `3. **情感连接**：表达对主人的依赖或一起旅行的快乐。`,
             `4. **篇幅**：80-150字左右，短小精悍，治愈风格。`,
@@ -1941,33 +2769,43 @@
         const h1 = spots.length ? pick(spots) : '';
         const h2 = spots.length > 1 ? pick(spots.filter((s) => s !== h1)) : '';
 
-        // 根据性格 + 城市风格组合生成文案
-        if (personality === '活泼') {
+        // 根据 2x2 人格 + 城市风格组合生成文案
+        if (personality === '小火苗') {
             if (flavor) {
                 return `耶！今天我们解锁了【${location}】！在${h1}${h2 ? `，又一路蹦蹦跳跳跑到${h2}` : ''}，笑声差点把相机都晃糊了。${progressText}`;
             }
             return `耶！今天我们来到了【${location}】！一路小跑着到处张望，感觉整座城市都在向我们打招呼。${progressText}`;
         }
 
-        if (personality === '贪吃') {
+        if (personality === '小灯泡') {
             if (flavor) {
-                return `终于到【${location}】了！鼻子在${h1}${h2 ? `和${h2}` : ''}之间来回巡逻，生怕错过一口好吃的。${progressText}`;
+                return `抵达【${location}】啦！在${h1}${h2 ? `，又顺路观察了一下${h2}` : ''}，一路都在偷偷分析这里的设计逻辑。${progressText}`;
             }
-            return `终于抵达【${location}】！比起风景，我更专注街边飘来的味道，准备把这里的美食记到专属清单里。${progressText}`;
+            return `抵达【${location}】啦！一路上我都在记路线、看路牌，感觉自己像一只小小导航仪。${progressText}`;
         }
 
-        // 文艺性格
-        if (flavor) {
-            return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把今天的光影都写进小小的旅行日记。${progressText}`;
+        if (personality === '小云朵') {
+            if (flavor) {
+                return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把今天的光和云都藏进小小的心里。${progressText}`;
+            }
+            return `风吹过【${location}】的街道，我慢慢走、慢慢看，只挑一两个瞬间悄悄收藏起来，等回去再和你一起回味。${progressText}`;
         }
-        return `风吹过【${location}】的街道，我慢慢走、慢慢看，把每一次心跳都折成书签，夹在记忆的这一页。${progressText}`;
+
+        // 小石头及其他：更克制、冷静
+        if (flavor) {
+            return `【${location}】还挺安静的。我在${h1}${h2 ? `，顺便看了看${h2}` : ''}，帮我们把今天的记忆都稳稳存好。${progressText}`;
+        }
+        return `今天把脚步落在了【${location}】。没什么夸张的场面，但一路走一路记，感觉记忆卡又多了一页。${progressText}`;
     }
 
     // --- 辅助函数：生成日记 ---
     function generateDiaryEntry(location, content, sceneOverride) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
         const personality = appState.petPersonality;
-        const avatar = appState.petAvatars[personality];
+        const personalityConfig = PERSONALITY_TYPES[personality] || null;
+        const avatar = (appState.petAvatars && appState.petAvatars[personality])
+            || (personalityConfig && personalityConfig.icon)
+            || '✨';
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
         
         const text = content && typeof content === 'string' && content.trim()
@@ -2013,8 +2851,7 @@
                 const label = scene ? scene.label : item.location;
                 const img = scene ? `<img src="${scene.image}" alt="${scene.label}" class="w-12 h-12 rounded-xl object-cover mb-1 border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
                 const fallback = scene ? `<span class="text-2xl mb-1 hidden">🧳</span>` : `<span class="text-2xl mb-1">🧳</span>`;
-                const countBadge = item.count > 1 ? `<span class="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">x${item.count}</span>` : '';
-                html += `<div class="cabinet-slot relative" data-cabinet-item="true">${img}${fallback}${countBadge}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
+                html += `<div class="cabinet-slot relative" data-cabinet-item="true">${img}${fallback}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
             } else {
                 html += cabinetPlaceholderHTML;
             }
@@ -2028,25 +2865,25 @@
         return div.innerHTML;
     }
 
+    function findCabinetItem(scene, location) {
+        if (!appState.cabinetItems || appState.cabinetItems.length === 0) return null;
+        return appState.cabinetItems.find(item =>
+            (scene && item.scene && item.scene.label === scene.label) ||
+            (!scene && !item.scene && item.location === location)
+        ) || null;
+    }
+
     function addCabinetItem(location, sceneOverride) {
         if (!cabinetGrid) return;
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
         appState.cabinetItems = appState.cabinetItems || [];
-        
-        // 检查重复物品
-        const existingItem = appState.cabinetItems.find(item => 
-            (scene && item.scene && item.scene.label === scene.label) || 
-            (!scene && !item.scene && item.location === location)
-        );
 
+        const existingItem = findCabinetItem(scene, location);
         if (existingItem) {
-            existingItem.count = (existingItem.count || 1) + 1;
-            // 将更新后的物品移到最前
-            appState.cabinetItems = appState.cabinetItems.filter(i => i !== existingItem);
-            appState.cabinetItems.unshift(existingItem);
-        } else {
-            appState.cabinetItems.unshift({ location, scene, count: 1 });
+            return;
         }
+
+        appState.cabinetItems.unshift({ location, scene });
 
         if (appState.cabinetItems.length > CABINET_SLOTS) {
             appState.cabinetItems = appState.cabinetItems.slice(0, CABINET_SLOTS);
