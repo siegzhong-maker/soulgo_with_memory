@@ -175,6 +175,25 @@
         }
         .pet-breathe { animation: breathe 3s ease-in-out infinite; }
         
+        /* 心跳共鸣背景动画 */
+        @keyframes heartbeatBg {
+            0%, 100% { background-color: rgba(255, 250, 240, 1); }
+            50% { background-color: rgba(255, 240, 245, 1); } /* 微红暖色 */
+        }
+        .heartbeat-bg-active {
+            animation: heartbeatBg 2s ease-in-out infinite;
+        }
+
+        /* 能量传递长按动画 */
+        @keyframes energyFlow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 143, 171, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 20px 10px rgba(255, 143, 171, 0.2); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 143, 171, 0); transform: scale(1); }
+        }
+        .energy-charging {
+            animation: energyFlow 1.5s ease-in-out infinite;
+        }
+        
         /* 宠物不同状态的身体动效（作用于图片本身） */
         @keyframes petIdleMotion {
             0%, 100% { transform: translateY(0) scale(1); }
@@ -394,8 +413,24 @@
             animation: shake 0.5s ease-in-out infinite;
         }
 
-        /* 气泡小尾巴与气泡同步显隐 */
+        /* 气泡小尾巴与气泡同步显隐（旧实现保留但默认隐藏） */
         .bubble-tail { pointer-events: none; }
+
+        /* 底部固定对话栏：默认隐藏，通过 .visible 控制显隐 */
+        #pet-dialog-bar {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        #pet-dialog-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 旧房间内跟随气泡默认不展示，由底部对话栏替代 */
+        #pet-action-bubble,
+        .bubble-tail {
+            display: none;
+        }
 
         /* 宠物页入场：房间卡片与宠物轻微动画 */
         .page-view#view-petroom.entrance .room-viewport-entrance {
@@ -413,16 +448,108 @@
             to { opacity: 1; transform: translate(-50%, 0) scale(1); }
         }
 
-        /* 宠物 Tab 全页底图铺满 */
-        #room-scene {
-            /* 移除背景图样式，改用 img 标签 */
+        /* 能量传递按钮区域 */
+        #energy-fingerprint-area {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #energy-fingerprint-area:active, #energy-fingerprint-area.active {
+            transform: translateX(-50%) scale(0.95);
+            background: rgba(255, 143, 171, 0.2);
+            border-color: rgba(255, 143, 171, 0.6);
+        }
+        #energy-fingerprint-icon {
+            font-size: 32px;
+            color: rgba(255, 143, 171, 0.6);
+            transition: all 0.3s ease;
+        }
+        #energy-fingerprint-area.active #energy-fingerprint-icon {
+            color: rgba(255, 143, 171, 1);
+            transform: scale(1.1);
+        }
+        
+        /* 能量粒子容器 */
+        #energy-particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 45;
+            overflow: hidden;
+        }
+        .energy-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #fff, #ff8fab);
+            border-radius: 50%;
+            opacity: 0;
+            animation: flyToPet 1s ease-out forwards;
+        }
+        @keyframes flyToPet {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.5); }
         }
         #view-petroom .petroom-top-bar {
             background: linear-gradient(to bottom, rgba(255,248,235,0.92) 0%, rgba(255,248,235,0.75) 100%);
             backdrop-filter: blur(8px);
         }
         #view-petroom .petroom-bottom-hint {
-            background: linear-gradient(to top, rgba(255,248,235,0.9), transparent);
+            display: none;
+        }
+
+        /* 拍立得照片墙样式 */
+        .polaroid-photo {
+            background: #fff;
+            padding: 3px 3px 8px 3px;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.15);
+            transform: rotate(var(--rotate));
+            transition: transform 0.2s ease, z-index 0s;
+            cursor: pointer;
+            pointer-events: auto;
+            width: 36px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: absolute; /* 绝对定位以便随意贴 */
+        }
+        .polaroid-photo:hover {
+            transform: scale(1.8) rotate(0deg) !important;
+            z-index: 100;
+            box-shadow: 4px 4px 16px rgba(0,0,0,0.2);
+        }
+        .polaroid-photo img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            background: #eee;
+            margin-bottom: 2px;
+            border: 1px solid #f0f0f0;
+        }
+        .polaroid-photo span {
+            font-size: 5px;
+            color: #555;
+            line-height: 1;
+            transform: scale(0.85);
+            white-space: nowrap;
+            overflow: hidden;
+            max-width: 100%;
         }
     </style>
 </head>
@@ -532,6 +659,11 @@
                 <!-- 房间背景图：高度自适应，宽度允许超出 -->
                 <img id="room-scene-bg" src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
 
+                <!-- 照片墙：位于房间背景墙上，用于粘贴拍立得照片 -->
+                <div id="memory-wall" class="absolute top-[20%] left-[10%] w-[30%] h-[25%] flex flex-wrap gap-2 content-start pointer-events-none z-20">
+                    <!-- JS 动态插入照片 -->
+                </div>
+
                 <!-- 宠物主体 -->
                 <div id="pet-avatar-room" class="absolute bottom-[20%] left-[60%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
                     <img id="pet-avatar-sprite" src="比卡丘动画导出/观察/flog_guancha_002.png" alt="旅行宠物" class="w-24 h-24 object-contain pointer-events-none select-none">
@@ -597,26 +729,33 @@
             </div>
         </div>
 
+        <!-- 固定底部对话栏：用于展示比卡丘当前对话，不随房间拖拽/缩放移动 -->
+        <div id="pet-dialog-bar" class="pointer-events-none opacity-0 transform transition-all duration-300 ease-out absolute left-4 right-4 bottom-24 z-40">
+            <div class="bg-white/95 backdrop-blur-md rounded-3xl shadow-xl border-2 border-[#ff8fab] px-4 py-2 flex items-start gap-2 max-w-2xl mx-auto">
+                <div class="text-lg leading-none mt-0.5">💬</div>
+                <p id="pet-dialog-text" class="text-sm sm:text-base font-bold text-gray-700 leading-relaxed break-words">
+                    正在期待旅行... ✨
+                </p>
+            </div>
+        </div>
+
         <!-- 首次进入引导 -->
         <p id="room-hint" class="absolute top-28 left-0 w-full z-10 text-center text-[10px] text-gray-500 mt-1 transition-opacity duration-500 flex-shrink-0 pointer-events-none" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">左右滑动、双指缩放可查看小屋</p>
 
-        <!-- 外置操作栏（保留，与场景内热点二选一或并用） -->
-        <div id="petroom-action-bar" class="absolute bottom-16 left-4 right-4 z-10 glass-card rounded-2xl p-3 mx-4 mt-2 mb-2 flex justify-around items-center gap-2 flex-shrink-0 pointer-events-auto">
-            <button type="button" id="action-rest" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 transition-transform active:scale-95" aria-label="休息">
-                <span class="text-xl">🛏️</span>
-                <span class="text-[11px] font-bold text-gray-700">休息</span>
-            </button>
-            <button type="button" id="action-cabinet" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行橱柜">
-                <span class="text-xl relative"><span id="action-cabinet-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-[#9bdeac] rounded-full hidden"></span>🎁</span>
-                <span class="text-[11px] font-bold text-gray-700">橱柜</span>
-            </button>
-            <button type="button" id="action-diary" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行日记">
-                <span class="text-xl relative"><span id="action-diary-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>📚</span>
-                <span class="text-[11px] font-bold text-gray-700">日记</span>
-            </button>
+        <!-- 外置操作栏：保留休息与橱柜，将日记移入场景热点，新增能量按钮 -->
+        <div id="petroom-action-bar" class="absolute bottom-16 left-4 right-4 z-10 glass-card rounded-2xl p-2 mx-4 mt-2 mb-2 flex justify-between items-center gap-2 flex-shrink-0 pointer-events-auto" style="display: none;">
+             <!-- 旧版操作栏已隐藏，改用全新的交互布局 -->
         </div>
 
-        <p class="petroom-bottom-hint absolute bottom-0 left-0 w-full z-10 text-center text-[10px] text-gray-600 py-2 px-4 pointer-events-none"><i class="ph-fill ph-info"></i> 宠物状态会根据你的旅行和它的性格变化哦~</p>
+        <!-- 能量指纹区：位于屏幕底部中央 -->
+        <div id="energy-fingerprint-area" class="pointer-events-auto" aria-label="长按传递能量">
+             <i class="ph-fill ph-fingerprint" id="energy-fingerprint-icon"></i>
+        </div>
+        
+        <!-- 能量粒子层 -->
+        <div id="energy-particles"></div>
+
+        <p class="petroom-bottom-hint absolute bottom-0 left-0 w-full z-10 text-center text-[10px] text-gray-600 py-2 px-4 pointer-events-none opacity-50"><i class="ph-fill ph-info"></i> 长按指纹传递能量，点击场景发现惊喜</p>
 
         <!-- 隐藏容器：承载旅行橱柜与旅行日记内容，正常视图中不展示 -->
         <div id="petroom-hidden-containers" class="hidden">
@@ -665,7 +804,7 @@
         currentActionInterval: null
     };
 
-    // --- 2x2 人格矩阵配置 ---
+    // --- 2x2 人格矩阵配置 (IP Config) ---
     const PERSONALITY_TYPES = {
         '小火苗': {
             name: '小火苗',
@@ -673,23 +812,39 @@
             energy: 'extrovert', // 外向
             emotion: 'emotional', // 感性
             desc: '热情、冲动、高饱和暖色',
+            promptDesc: '热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。',
             colorFilter: 'brightness(1.1) saturate(1.4) hue-rotate(-10deg)', // 暖红/橙色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 0, // 即时反应
             bubbleColor: '#ff9a9e',
-            textColor: '#be185d'
+            textColor: '#be185d',
+            dialogues: [
+                "冲冲冲！下一个目的地是哪里？🔥",
+                "刚刚那只蝴蝶飞得好快，我要追上它！",
+                "快带我出去玩嘛！(跳来跳去)",
+                "只要和你在一起，去哪里都开心！✨"
+            ],
+            travelDialogue: "我超级喜欢【{location}】，太热闹了！"
         },
         '小灯泡': {
             name: '小灯泡',
-            icon: '�',
+            icon: '💡',
             energy: 'extrovert', // 外向
             emotion: 'rational', // 理性
             desc: '好奇、自信、明亮科技感',
+            promptDesc: '理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。',
             colorFilter: 'brightness(1.2) saturate(1.2) hue-rotate(45deg)', // 明亮黄色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 800, // 思考延迟
             bubbleColor: '#fcd34d',
-            textColor: '#b45309'
+            textColor: '#b45309',
+            dialogues: [
+                "根据我的计算，今天的湿度很适合出门。💡",
+                "正在分析刚才那个路标的设计逻辑...",
+                "我的电池充满电了。",
+                "效率第一，我们现在的路线是最优解吗？"
+            ],
+            travelDialogue: "【{location}】的建筑结构很有趣。"
         },
         '小云朵': {
             name: '小云朵',
@@ -697,11 +852,19 @@
             energy: 'introvert', // 内向
             emotion: 'emotional', // 感性
             desc: '温柔、敏感、马卡龙色',
+            promptDesc: '感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。',
             colorFilter: 'brightness(1.05) saturate(0.8) hue-rotate(200deg)', // 柔和粉/紫色调
             animSpeed: 1.4, // 动作慢
             reactionDelay: 0, // 即时反应
             bubbleColor: '#e9d5ff',
-            textColor: '#7e22ce'
+            textColor: '#7e22ce',
+            dialogues: [
+                "今天的风好温柔啊...☁️",
+                "刚才路边的小花看起来有点孤单。",
+                "不想动...就在这里发呆好不好？",
+                "只要静静地陪着你就很好了。"
+            ],
+            travelDialogue: "有点想念【{location}】的那片云。"
         },
         '小石头': {
             name: '小石头',
@@ -709,11 +872,19 @@
             energy: 'introvert', // 内向
             emotion: 'rational', // 理性
             desc: '沉稳、冷幽默、极简冷色',
+            promptDesc: '理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。',
             colorFilter: 'grayscale(0.6) brightness(0.9) contrast(1.1)', // 冷灰/蓝色调
             animSpeed: 1.5, // 动作慢
             reactionDelay: 1000, // 较长思考延迟
             bubbleColor: '#e5e7eb',
-            textColor: '#374151'
+            textColor: '#374151',
+            dialogues: [
+                "嗯...这里挺安静的。🪨",
+                "保持稳定，不要大惊小怪。",
+                "我在思考宇宙的尽头。",
+                "（默默地看着你）"
+            ],
+            travelDialogue: "【{location}】...还行吧。"
         }
     };
     
@@ -782,6 +953,8 @@
 
     const roomViewport = document.getElementById('room-viewport');
     const roomScene = document.getElementById('room-scene');
+    const petDialogBar = document.getElementById('pet-dialog-bar');
+    const petDialogText = document.getElementById('pet-dialog-text');
 
     const defaultPetPosition = {
         bottom: '20%',
@@ -902,6 +1075,29 @@
     }
 
     window.addEventListener('resize', updateRoomHotspotPositions);
+
+    // 统一的宠物对话展示：在宠物页底部对话栏中显示当前消息
+    function showPetMessage(message, options = {}) {
+        if (!petDialogBar || !petDialogText) return;
+
+        petDialogText.textContent = message;
+
+        // 根据当前人格配置调整对话栏边框颜色
+        const cfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        if (cfg && cfg.bubbleColor) {
+            petDialogBar.querySelector('div').style.borderColor = cfg.bubbleColor;
+        }
+
+        petDialogBar.classList.add('visible');
+
+        const duration = options.duration != null ? options.duration : 3000;
+        if (duration > 0) {
+            window.clearTimeout(petDialogBar.__hideTimer);
+            petDialogBar.__hideTimer = window.setTimeout(() => {
+                petDialogBar.classList.remove('visible');
+            }, duration);
+        }
+    }
 
     // 根据当前人格与目标热点，构造一条从当前位置到目标的行走路径
     function buildPathToHotspot(hotspotKey, personalityCfg) {
@@ -1982,34 +2178,102 @@
         setPetState(PET_STATES.INTERACT);
     });
 
-    // --- 比卡丘宠物按钮交互 ---
-    if (btnPetTouch) {
-        btnPetTouch.addEventListener('click', () => {
-            markPetInteraction();
-            triggerAIPetAction('主人轻轻摸了摸我的头');
-            setPetState(PET_STATES.INTERACT);
-        });
+    const energyFingerprint = document.getElementById('energy-fingerprint-area');
+    const energyParticlesContainer = document.getElementById('energy-particles');
+    let energyPressTimer = null;
+    let energyChargeInterval = null;
+
+    // --- 能量传递交互 ---
+    if (energyFingerprint) {
+        // 开始按压
+        const startCharge = (e) => {
+            e.preventDefault();
+            energyFingerprint.classList.add('active');
+            energyFingerprint.classList.add('energy-charging'); // 播放呼吸光晕动画
+            
+            // 播放心跳背景
+            document.body.classList.add('heartbeat-bg-active');
+
+            // 触发一次简短反馈
+            triggerAIPetAction('感受到了主人的能量... ❤️');
+            playPetAnimation('idle_observe', { loop: true }); // 变为观察/专注状态
+
+            // 持续生成粒子
+            energyChargeInterval = setInterval(() => {
+                createEnergyParticle();
+                // 模拟手机震动反馈 (如果支持)
+                if (navigator.vibrate) navigator.vibrate(15);
+            }, 100);
+
+            // 长按判定：超过 2 秒视为一次完整充能
+            energyPressTimer = setTimeout(() => {
+                triggerAIPetAction('能量充满啦！好温暖！✨');
+                playExcitedAnimation();
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            }, 2000);
+        };
+
+        // 结束按压
+        const stopCharge = () => {
+            energyFingerprint.classList.remove('active');
+            energyFingerprint.classList.remove('energy-charging');
+            document.body.classList.remove('heartbeat-bg-active');
+            
+            clearInterval(energyChargeInterval);
+            clearTimeout(energyPressTimer);
+            energyChargeInterval = null;
+            energyPressTimer = null;
+
+            // 恢复默认状态
+            setTimeout(() => {
+                if (petLife.current !== PET_STATES.REST) {
+                    setPetState(PET_STATES.IDLE_BREATH);
+                }
+            }, 1000);
+        };
+
+        energyFingerprint.addEventListener('mousedown', startCharge);
+        energyFingerprint.addEventListener('touchstart', startCharge, { passive: false });
+        
+        energyFingerprint.addEventListener('mouseup', stopCharge);
+        energyFingerprint.addEventListener('mouseleave', stopCharge);
+        energyFingerprint.addEventListener('touchend', stopCharge);
+        energyFingerprint.addEventListener('touchcancel', stopCharge);
     }
 
-    if (btnPetGreet) {
-        btnPetGreet.addEventListener('click', () => {
-            markPetInteraction();
-            triggerAIPetAction('主人对我挥手打了个招呼');
-            setPetState(PET_STATES.IDLE_OBSERVE);
-        });
-    }
-
-    if (btnPetRestToggle) {
-        btnPetRestToggle.addEventListener('click', () => {
-            if (petLife.current === PET_STATES.REST) {
-                // 从休息中被叫醒
-                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
-                setPetState(PET_STATES.IDLE_WAIT);
-            } else {
-                triggerAIPetAction('决定先小睡一会儿，恢复体力');
-                setPetState(PET_STATES.REST);
-            }
-        });
+    function createEnergyParticle() {
+        if (!energyParticlesContainer || !petAvatarRoom) return;
+        
+        const rect = energyFingerprint.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+        
+        const petRect = petAvatarRoom.getBoundingClientRect();
+        const endX = petRect.left + petRect.width / 2;
+        const endY = petRect.top + petRect.height / 2;
+        
+        const particle = document.createElement('div');
+        particle.className = 'energy-particle';
+        
+        // 随机偏移起始点
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        
+        particle.style.left = `${startX + offsetX}px`;
+        particle.style.top = `${startY + offsetY}px`;
+        
+        // 计算 CSS 变量用于动画终点
+        const tx = endX - (startX + offsetX);
+        const ty = endY - (startY + offsetY);
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        
+        energyParticlesContainer.appendChild(particle);
+        
+        // 动画结束后移除
+        setTimeout(() => {
+            particle.remove();
+        }, 1000);
     }
 
     // --- 核心：打卡联动 ---
@@ -2302,55 +2566,28 @@
             return;
         }
 
-        const showBubbleShort = (text) => {
-            if (petActionBubble) {
-                petActionBubble.innerHTML = text;
-                petActionBubble.style.opacity = '1';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
-            }
-            setTimeout(() => {
-                if (petActionBubble) petActionBubble.style.opacity = '0';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '0';
-            }, 2500);
-        };
-
         const generateText = () => {
             const personality = appState.petPersonality;
+            const pConfig = PERSONALITY_TYPES[personality];
             const hasTraveled = appState.locations.length > 0;
             const lastLocation = hasTraveled ? appState.locations[appState.locations.length - 1] : '';
-
-            const aiTemplates = {
-                '小火苗': [
-                    "冲冲冲！下一个目的地是哪里？🔥",
-                    "刚刚那只蝴蝶飞得好快，我要追上它！",
-                    hasTraveled ? `我超级喜欢【${lastLocation}】，太热闹了！` : "快带我出去玩嘛！(跳来跳去)",
-                    "只要和你在一起，去哪里都开心！✨"
-                ],
-                '小灯泡': [
-                    "根据我的计算，今天的湿度很适合出门。💡",
-                    "正在分析刚才那个路标的设计逻辑...",
-                    hasTraveled ? `【${lastLocation}】的建筑结构很有趣。` : "我的电池充满电了。",
-                    "效率第一，我们现在的路线是最优解吗？"
-                ],
-                '小云朵': [
-                    "今天的风好温柔啊...☁️",
-                    "刚才路边的小花看起来有点孤单。",
-                    hasTraveled ? `有点想念【${lastLocation}】的那片云。` : "不想动...就在这里发呆好不好？",
-                    "只要静静地陪着你就很好了。"
-                ],
-                '小石头': [
-                    "嗯...这里挺安静的。🪨",
-                    "保持稳定，不要大惊小怪。",
-                    hasTraveled ? `【${lastLocation}】...还行吧。` : "我在思考宇宙的尽头。",
-                    "（默默地看着你）"
-                ]
-            };
 
             if (contextOverride) {
                 return `哇！${contextOverride}，太开心了！✨`;
             }
-            const pool = aiTemplates[personality];
-            return pool ? pool[Math.floor(Math.random() * pool.length)] : '正在期待旅行... ✨';
+
+            if (!pConfig) return '正在期待旅行... ✨';
+
+            // 优先检查是否有旅行相关的回忆对话
+            if (hasTraveled && pConfig.travelDialogue && Math.random() > 0.6) {
+                return pConfig.travelDialogue.replace('{location}', lastLocation);
+            }
+            
+            // 否则随机从日常对话库中抽取
+            const dialogues = pConfig.dialogues || [];
+            return dialogues.length > 0 
+                ? dialogues[Math.floor(Math.random() * dialogues.length)] 
+                : '正在期待旅行... ✨';
         };
 
         const p = getCurrentPersonality();
@@ -2358,17 +2595,13 @@
         
         // 理性人格增加“思考”延迟
         if (delay > 0) {
-            if (petActionBubble) {
-                petActionBubble.innerHTML = '...';
-                petActionBubble.style.opacity = '1';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
-            }
-            // 播放思考动作（如果有）或暂停一下
+            // 先显示“思考中”的省略号，再在延迟后给出正式内容
+            showPetMessage('...', { duration: delay + 500 });
             setTimeout(() => {
-                showBubbleShort(generateText());
+                showPetMessage(generateText());
             }, delay);
         } else {
-            showBubbleShort(generateText());
+            showPetMessage(generateText());
         }
     }
 
@@ -2469,10 +2702,27 @@
     }
 
     // 初始不主动启动，比卡丘在首次进入宠物页时再激活
-    // 但如果默认页就是宠物页（例如后续改动），则立即启动一次
+    // 但如果默认页就是宠物页（例如后续改动），则立即启动一次，并聚焦到比卡丘所在区域
     const petViewEl = document.getElementById('view-petroom');
     if (petViewEl && petViewEl.classList.contains('active')) {
         enterPetRoom();
+
+        // 页面首次加载时，将视口平滑滚动到比卡丘所在区域
+        if (petAvatarRoom && typeof petAvatarRoom.scrollIntoView === 'function') {
+            // 使用轻微延迟，确保布局和房间背景渲染完成
+            setTimeout(() => {
+                try {
+                    petAvatarRoom.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                } catch (e) {
+                    // 在不支持选项对象的环境中回退到基础调用
+                    petAvatarRoom.scrollIntoView();
+                }
+            }, 300);
+        }
     }
 
     window.__triggerPetTapInteraction = function() {
@@ -2690,16 +2940,16 @@
             ? `这是我们第 ${visitIndex} 次一起旅行。`
             : '这是我们的第一次真正出发。';
 
+        const pConfig = PERSONALITY_TYPES[personality];
+        const promptDesc = pConfig ? pConfig.promptDesc : '热情、可爱、治愈。';
+
         const prompt = [
             '你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”给主人写一篇旅行日记。',
             `\n【当前情境】`,
             `- 地点：${location}${flavorText}`,
             `- 时间：${date} ${timeOfDay}`,
             `- 你的性格：${personality}`,
-            `  * 小火苗：热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。`,
-            `  * 小灯泡：理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。`,
-            `  * 小云朵：感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。`,
-            `  * 小石头：理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。`,
+            `- 性格描述：${promptDesc}`,
             `\n【写作要求】`,
             `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**。`,
             `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
@@ -2840,6 +3090,54 @@
     const CABINET_SLOTS = 12;
     const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon mb-1" width="40" height="40"><span>去旅行解锁</span></div>`;
 
+    // --- 记忆墙渲染：随机散落在墙上的拍立得 ---
+    function renderMemoryWall() {
+        const wall = document.getElementById('memory-wall');
+        if (!wall) return;
+        
+        wall.innerHTML = '';
+        const items = appState.cabinetItems || [];
+        // 取最近 5 张展示，倒序（最新的在最上面）
+        const recentItems = items.slice(0, 5); 
+        
+        recentItems.forEach((item, index) => {
+            if (!item.scene && !item.location) return;
+            
+            const label = item.scene ? item.scene.label : item.location;
+            const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+            
+            const div = document.createElement('div');
+            div.className = 'polaroid-photo';
+            
+            // 随机位置与角度 (基于 wall 的百分比)
+            // 简单算法：分布在墙面上，利用 index 稍微错开防止完全重叠
+            // wall 是 flex 布局，但 photo 是 absolute，所以 left/top 生效
+            const randomX = 10 + (index * 12) + (Math.random() * 10 - 5); 
+            const randomY = 10 + (index * 5) + (Math.random() * 20 - 10);
+            const rotate = (Math.random() * 24 - 12).toFixed(1);
+            
+            div.style.left = `${Math.min(70, Math.max(0, randomX))}%`; 
+            div.style.top = `${Math.min(60, Math.max(0, randomY))}%`;
+            div.style.setProperty('--rotate', `${rotate}deg`);
+            div.style.zIndex = index + 1;
+            
+            // 截取地名
+            const shortLabel = label.split('·')[0] || label;
+
+            div.innerHTML = `
+                <img src="${imgSrc}" alt="${label}">
+                <span>${shortLabel}</span>
+            `;
+            
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDiaryModal(); // 点击照片打开日记
+            });
+            
+            wall.appendChild(div);
+        });
+    }
+
     function renderCabinetGrid() {
         if (!cabinetGrid) return;
         const list = appState.cabinetItems || [];
@@ -2889,6 +3187,7 @@
             appState.cabinetItems = appState.cabinetItems.slice(0, CABINET_SLOTS);
         }
         renderCabinetGrid();
+        renderMemoryWall(); // 同步更新墙面
     }
 
     // --- 辅助函数：地图页场景预览卡片 ---
@@ -2912,6 +3211,7 @@
     }
 
     renderCabinetGrid();
+    renderMemoryWall();
 </script>
 </body>
 </html>
