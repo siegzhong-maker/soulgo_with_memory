@@ -2119,91 +2119,120 @@
         return text;
     }
 
-    // 省级行政区 + 若干热门城市在当前卡通地图上的大致坐标（基于容器百分比）
+    // 省级行政区 + 若干热门城市在当前卡通地图上的大致坐标（基于地图图片内部的归一化坐标：0~1）
+    // x: 从左到右的比例，y: 从上到下的比例
     const locationMap = {
         // 直辖市 / 华北
-        '北京':   { top: '28%', left: '62%' },
-        '天津':   { top: '30%', left: '66%' },
-        '河北':   { top: '32%', left: '59%' },
-        '山西':   { top: '34%', left: '54%' },
-        '内蒙古': { top: '26%', left: '50%' },
+        '北京':   { x: 0.62, y: 0.28 },
+        '天津':   { x: 0.66, y: 0.30 },
+        '河北':   { x: 0.59, y: 0.32 },
+        '山西':   { x: 0.54, y: 0.34 },
+        '内蒙古': { x: 0.50, y: 0.26 },
 
         // 东北
-        '辽宁':   { top: '26%', left: '69%' },
-        '吉林':   { top: '23%', left: '74%' },
-        '黑龙江': { top: '19%', left: '78%' },
+        '辽宁':   { x: 0.69, y: 0.26 },
+        '吉林':   { x: 0.74, y: 0.23 },
+        '黑龙江': { x: 0.78, y: 0.19 },
 
         // 华东
-        '上海':   { top: '46%', left: '74%' },
-        '江苏':   { top: '42%', left: '70%' },
-        '浙江':   { top: '50%', left: '71%' },
-        '山东':   { top: '38%', left: '67%' },
-        '安徽':   { top: '46%', left: '63%' },
-        '江西':   { top: '56%', left: '60%' },
-        '福建':   { top: '58%', left: '66%' },
+        '上海':   { x: 0.74, y: 0.46 },
+        '江苏':   { x: 0.70, y: 0.42 },
+        '浙江':   { x: 0.71, y: 0.50 },
+        '山东':   { x: 0.67, y: 0.38 },
+        '安徽':   { x: 0.63, y: 0.46 },
+        '江西':   { x: 0.60, y: 0.56 },
+        '福建':   { x: 0.66, y: 0.58 },
 
         // 华中
-        '河南':   { top: '42%', left: '58%' },
-        '湖北':   { top: '48%', left: '55%' },
-        '湖南':   { top: '54%', left: '55%' },
+        '河南':   { x: 0.58, y: 0.42 },
+        '湖北':   { x: 0.55, y: 0.48 },
+        '湖南':   { x: 0.55, y: 0.54 },
 
         // 华南
-        '广东':   { top: '64%', left: '58%' },
-        '广西':   { top: '66%', left: '50%' },
-        '海南':   { top: '76%', left: '58%' },
-        '香港':   { top: '67%', left: '61%' },
-        '澳门':   { top: '68%', left: '58%' },
-        '台湾':   { top: '63%', left: '74%' },
+        '广东':   { x: 0.58, y: 0.64 },
+        '广西':   { x: 0.50, y: 0.66 },
+        '海南':   { x: 0.58, y: 0.76 },
+        '香港':   { x: 0.61, y: 0.67 },
+        '澳门':   { x: 0.58, y: 0.68 },
+        '台湾':   { x: 0.74, y: 0.63 },
 
         // 西南
-        '重庆':   { top: '55%', left: '54%' },
-        '四川':   { top: '51%', left: '48%' },
-        '贵州':   { top: '58%', left: '50%' },
-        '云南':   { top: '63%', left: '45%' },
-        '西藏':   { top: '60%', left: '28%' },
+        '重庆':   { x: 0.54, y: 0.55 },
+        '四川':   { x: 0.48, y: 0.51 },
+        '贵州':   { x: 0.50, y: 0.58 },
+        '云南':   { x: 0.45, y: 0.63 },
+        '西藏':   { x: 0.28, y: 0.60 },
 
         // 西北
-        '陕西':   { top: '41%', left: '50%' },
-        '甘肃':   { top: '37%', left: '40%' },
-        '青海':   { top: '38%', left: '34%' },
-        '宁夏':   { top: '35%', left: '46%' },
-        '新疆':   { top: '27%', left: '24%' },
+        '陕西':   { x: 0.50, y: 0.41 },
+        '甘肃':   { x: 0.40, y: 0.37 },
+        '青海':   { x: 0.34, y: 0.38 },
+        '宁夏':   { x: 0.46, y: 0.35 },
+        '新疆':   { x: 0.24, y: 0.27 },
 
         // 热门城市（在省份内大致位置）
-        '武汉':   { top: '48%', left: '56%' },
-        '南京':   { top: '44%', left: '71%' },
-        '杭州':   { top: '50%', left: '72%' },
-        '成都':   { top: '52%', left: '46%' },
-        '西安':   { top: '42%', left: '51%' },
-        '青岛':   { top: '36%', left: '69%' },
-        '厦门':   { top: '60%', left: '67%' },
-        '深圳':   { top: '66%', left: '59%' },
-        '广州':   { top: '65%', left: '58%' },
-        '苏州':   { top: '44%', left: '72%' },
-        '长沙':   { top: '54%', left: '56%' },
-        '郑州':   { top: '42%', left: '57%' },
-        '济南':   { top: '38%', left: '65%' },
-        '哈尔滨': { top: '20%', left: '78%' },
-        '沈阳':   { top: '26%', left: '70%' },
-        '昆明':   { top: '64%', left: '42%' },
-        '大理':   { top: '62%', left: '38%' },
-        '丽江':   { top: '60%', left: '36%' },
-        '洛阳':   { top: '42%', left: '55%' },
-        '桂林':   { top: '64%', left: '52%' },
-        '珠海':   { top: '67%', left: '58%' },
-        '大连':   { top: '24%', left: '72%' },
-        '宁波':   { top: '50%', left: '73%' },
-        '无锡':   { top: '44%', left: '71%' },
-        '合肥':   { top: '46%', left: '64%' },
-        '福州':   { top: '58%', left: '66%' },
-        '南昌':   { top: '56%', left: '61%' },
-        '石家庄': { top: '32%', left: '60%' },
-        '太原':   { top: '34%', left: '54%' },
-        '呼和浩特': { top: '28%', left: '48%' },
-        '乌鲁木齐': { top: '30%', left: '22%' },
-        '拉萨':   { top: '62%', left: '26%' },
-        '三亚':   { top: '78%', left: '56%' }
+        '武汉':   { x: 0.56, y: 0.48 },
+        '南京':   { x: 0.71, y: 0.44 },
+        '杭州':   { x: 0.72, y: 0.50 },
+        '成都':   { x: 0.46, y: 0.52 },
+        '西安':   { x: 0.51, y: 0.42 },
+        '青岛':   { x: 0.69, y: 0.36 },
+        '厦门':   { x: 0.67, y: 0.60 },
+        '深圳':   { x: 0.59, y: 0.66 },
+        '广州':   { x: 0.58, y: 0.65 },
+        '苏州':   { x: 0.72, y: 0.44 },
+        '长沙':   { x: 0.56, y: 0.54 },
+        '郑州':   { x: 0.57, y: 0.42 },
+        '济南':   { x: 0.65, y: 0.38 },
+        '哈尔滨': { x: 0.78, y: 0.20 },
+        '沈阳':   { x: 0.70, y: 0.26 },
+        '昆明':   { x: 0.42, y: 0.64 },
+        '大理':   { x: 0.38, y: 0.62 },
+        '丽江':   { x: 0.36, y: 0.60 },
+        '洛阳':   { x: 0.55, y: 0.42 },
+        '桂林':   { x: 0.52, y: 0.64 },
+        '珠海':   { x: 0.58, y: 0.67 },
+        '大连':   { x: 0.72, y: 0.24 },
+        '宁波':   { x: 0.73, y: 0.50 },
+        '无锡':   { x: 0.71, y: 0.44 },
+        '合肥':   { x: 0.64, y: 0.46 },
+        '福州':   { x: 0.66, y: 0.58 },
+        '南昌':   { x: 0.61, y: 0.56 },
+        '石家庄': { x: 0.60, y: 0.32 },
+        '太原':   { x: 0.54, y: 0.34 },
+        '呼和浩特': { x: 0.48, y: 0.28 },
+        '乌鲁木齐': { x: 0.22, y: 0.30 },
+        '拉萨':   { x: 0.26, y: 0.62 },
+        '三亚':   { x: 0.56, y: 0.78 }
     };
+
+    const chinaMapContainer = document.getElementById('china-map-container');
+    const chinaMapImg = document.getElementById('china-map-img');
+
+    function getPositionFromRatio(xRatio, yRatio) {
+        if (!chinaMapContainer) {
+            return { top: '50%', left: '50%' };
+        }
+
+        const containerRect = chinaMapContainer.getBoundingClientRect();
+        let imgRect = chinaMapImg ? chinaMapImg.getBoundingClientRect() : null;
+
+        // 如果图片尚未加载成功，退化为使用容器自身尺寸
+        if (!imgRect || imgRect.width === 0 || imgRect.height === 0) {
+            imgRect = containerRect;
+        }
+
+        const pxX = imgRect.left + imgRect.width * xRatio;
+        const pxY = imgRect.top + imgRect.height * yRatio;
+
+        const leftPercent = ((pxX - containerRect.left) / containerRect.width) * 100;
+        const topPercent = ((pxY - containerRect.top) / containerRect.height) * 100;
+
+        return {
+            top: `${topPercent}%`,
+            left: `${leftPercent}%`
+        };
+    }
 
     // 城市 → 省份（用于未在 locationMap 中的地名兜底，落在对应省份中心）
     const cityToProvince = {
@@ -2239,14 +2268,20 @@
 
     // --- 地图省份热点层：可点击省份，填入地点并打卡 ---
     const mapHotspotsEl = document.getElementById('map-hotspots');
-    if (mapHotspotsEl) {
+    function createMapHotspots() {
+        if (!mapHotspotsEl) return;
+        mapHotspotsEl.innerHTML = '';
+
         Object.entries(locationMap).forEach(([name, pos]) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'map-hotspot';
             btn.setAttribute('aria-label', `在${name}打卡`);
-            btn.style.top = pos.top;
-            btn.style.left = pos.left;
+
+            const { top, left } = getPositionFromRatio(pos.x, pos.y);
+            btn.style.top = top;
+            btn.style.left = left;
+
             btn.dataset.location = name;
             btn.title = `点击在 ${name} 打卡`;
             btn.addEventListener('click', (e) => {
@@ -2256,6 +2291,18 @@
                 if (btnCheckin && !isCheckinInProgress) btnCheckin.click();
             });
             mapHotspotsEl.appendChild(btn);
+        });
+    }
+
+    if (mapHotspotsEl) {
+        createMapHotspots();
+        if (chinaMapImg) {
+            chinaMapImg.addEventListener('load', () => {
+                createMapHotspots();
+            });
+        }
+        window.addEventListener('resize', () => {
+            window.requestAnimationFrame(createMapHotspots);
         });
     }
 
@@ -2272,14 +2319,16 @@
         let top;
         let left;
         if (mapping) {
-            top = mapping.top;
-            left = mapping.left;
+            const pos = getPositionFromRatio(mapping.x, mapping.y);
+            top = pos.top;
+            left = pos.left;
         } else {
             // 在规定范围内随机生成坐标 (避开边缘) 作为兜底
-            const randomX = Math.floor(Math.random() * 60) + 20;
-            const randomY = Math.floor(Math.random() * 60) + 20;
-            left = `${randomX}%`;
-            top = `${randomY}%`;
+            const randomX = (Math.floor(Math.random() * 60) + 20) / 100; // 0.2 - 0.8
+            const randomY = (Math.floor(Math.random() * 60) + 20) / 100;
+            const pos = getPositionFromRatio(randomX, randomY);
+            left = pos.left;
+            top = pos.top;
         }
         
         const pinHTML = `
