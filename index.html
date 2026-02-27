@@ -2286,65 +2286,74 @@
 
         isCheckinInProgress = true;
 
-        appState.locations.push(location);
-        
-        // 1. 在地图上随机位置生成打卡图钉
-        addMapPin(location);
-
         const originalText = btnCheckin.innerText;
         btnCheckin.disabled = true;
         btnCheckin.innerText = '写日记中…';
-        
-        let diaryText = '';
-        let usedFallback = false;
 
-        console.log('[Diary AIGC] 正在通过 /api/chat 请求生成日记…');
-        const result = await generateDiaryWithAIGC(location, appState.petPersonality);
-        if (result && result.ok && result.content) {
-            diaryText = result.content;
-        } else {
-            usedFallback = true;
-            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。原因:', result && result.error ? result.error : '返回内容为空');
-        }
+        try {
+            appState.locations.push(location);
+            
+            // 1. 在地图上随机位置生成打卡图钉
+            addMapPin(location);
 
-        if (!diaryText) {
-            diaryText = buildDiaryText(location, appState.petPersonality);
-        }
+            let diaryText = '';
+            let usedFallback = false;
 
-        const scene = getSceneAsset(location);
-        const existingCabinetItem = findCabinetItem(scene, location);
-        const isFirstUnlock = !existingCabinetItem;
+            console.log('[Diary AIGC] 正在通过 /api/chat 请求生成日记…');
+            const result = await generateDiaryWithAIGC(location, appState.petPersonality);
+            if (result && result.ok && result.content) {
+                diaryText = result.content;
+            } else {
+                usedFallback = true;
+                console.warn('[Diary AIGC] 使用本地模板日记作为兜底。原因:', result && result.error ? result.error : '返回内容为空');
+            }
 
-        // 2. 生成日记
-        generateDiaryEntry(location, diaryText, scene);
+            if (!diaryText) {
+                diaryText = buildDiaryText(location, appState.petPersonality);
+            }
 
-        // 3. 改变宠物房间状态与橱柜
-        triggerAIPetAction(`刚才去了${location}`);
-        setPetState(PET_STATES.INTERACT);
-        petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
-        if (isFirstUnlock && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
-        diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
-        if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
-        if (isFirstUnlock) {
-            addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
-            showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
-        }
-        playExcitedAnimation();                 // 宠物播放一次兴奋动画
+            const scene = getSceneAsset(location);
+            const existingCabinetItem = findCabinetItem(scene, location);
+            const isFirstUnlock = !existingCabinetItem;
 
-        if (usedFallback) {
-            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。');
-        }
-        
-        // 按钮视觉反馈
-        locationInput.value = '';
-        btnCheckin.innerText = '打卡成功!';
-        btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
-        setTimeout(() => {
-            btnCheckin.innerText = originalText || '去打卡';
-            btnCheckin.classList.replace('bg-[#9bdeac]', 'bg-[#ff8fab]');
+            // 2. 生成日记
+            generateDiaryEntry(location, diaryText, scene);
+
+            // 3. 改变宠物房间状态与橱柜
+            triggerAIPetAction(`刚才去了${location}`);
+            setPetState(PET_STATES.INTERACT);
+            if (petRoomBadge) petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
+            if (isFirstUnlock && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+            if (diaryBadge) diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
+            if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+            if (isFirstUnlock) {
+                addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
+                showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
+            }
+            playExcitedAnimation();                 // 宠物播放一次兴奋动画
+
+            if (usedFallback) {
+                console.warn('[Diary AIGC] 使用本地模板日记作为兜底。');
+            }
+
+            // 按钮视觉反馈
+            locationInput.value = '';
+            btnCheckin.innerText = '打卡成功!';
+            if (btnCheckin.classList.contains('bg-[#ff8fab]')) {
+                btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
+            }
+            setTimeout(() => {
+                btnCheckin.innerText = originalText || '去打卡';
+                if (btnCheckin.classList.contains('bg-[#9bdeac]')) {
+                    btnCheckin.classList.replace('bg-[#9bdeac]', 'bg-[#ff8fab]');
+                }
+            }, 1500);
+        } catch (e) {
+            console.error('[Diary AIGC] 生成日记流程出现异常:', e);
+        } finally {
             btnCheckin.disabled = false;
             isCheckinInProgress = false;
-        }, 1500);
+        }
     });
 
     // --- 地点标准化与中国地图坐标映射 ---
@@ -3083,7 +3092,7 @@
             </div>
         `;
         diaryList.insertAdjacentHTML('afterbegin', diaryHTML);
-        diaryBadge.classList.remove('hidden'); // 显示日记未读红点
+        if (diaryBadge) diaryBadge.classList.remove('hidden'); // 显示日记未读红点
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
     }
 
