@@ -53,7 +53,8 @@
         }
 
         .cabinet-modal {
-            background: linear-gradient(135deg, #e8dcc8 0%, #dfd0b8 50%, #e5d9c4 100%);
+            background: url('场景/物件UI背景.png') no-repeat center center;
+            background-size: cover;
             color: #5c4a3a;
         }
         .cabinet-modal .text-gray-800,
@@ -355,10 +356,7 @@
 
         /* 宠物 Tab 全页底图铺满 */
         #room-scene {
-            background-image: url('img_v3_02v9_e5e8fa0c-9998-4db2-954f-3108a59180bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            /* 移除背景图样式，改用 img 标签 */
         }
         #view-petroom .petroom-top-bar {
             background: linear-gradient(to bottom, rgba(255,248,235,0.92) 0%, rgba(255,248,235,0.75) 100%);
@@ -450,42 +448,42 @@
 
         <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
         <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
-            <div id="room-scene" class="absolute left-0 top-0 w-full h-full pointer-events-none" style="transform-origin: 0 0;">
-                <!-- 不再单独放房间图，使用整页底图 -->
+            <div id="room-scene" class="absolute top-0 left-0 h-full w-auto flex justify-center items-center" style="transform-origin: 0 0;">
+                <!-- 房间背景图：高度自适应，宽度允许超出 -->
+                <img src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
 
-            <!-- 宠物主体 -->
-            <div id="pet-avatar-room" class="absolute bottom-[25%] left-[50%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
-                <img id="pet-avatar-sprite" src="比卡丘动画导出/观察/flog_guancha_002.png" alt="旅行宠物" class="w-24 h-24 object-contain pointer-events-none select-none">
-            </div>
-            
-            <!-- 互动气泡 -->
-            <div id="pet-action-bubble" class="absolute bottom-[48%] left-[50%] bubble-float bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-xl text-sm font-bold text-gray-700 whitespace-nowrap z-50 border-2 border-[#ff8fab] transition-all duration-300 pointer-events-none opacity-0" style="transform: translateX(-50%);">
-                正在期待旅行... ✨
-            </div>
-            <div class="absolute bottom-[46%] left-[50%] w-3 h-3 bg-white border-r-2 border-b-2 border-[#ff8fab] z-40 pointer-events-none bubble-tail opacity-0 transition-opacity duration-300" style="transform: translateX(-50%) rotate(45deg);"></div>
+                <!-- 宠物主体 -->
+                <div id="pet-avatar-room" class="absolute bottom-[25%] left-[50%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
+                    <img id="pet-avatar-sprite" src="比卡丘动画导出/观察/flog_guancha_002.png" alt="旅行宠物" class="w-24 h-24 object-contain pointer-events-none select-none">
+                </div>
+                
+                <!-- 互动气泡 -->
+                <div id="pet-action-bubble" class="absolute bottom-[48%] left-[50%] bubble-float bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-xl text-sm font-bold text-gray-700 whitespace-nowrap z-50 border-2 border-[#ff8fab] transition-all duration-300 pointer-events-none opacity-0" style="transform: translateX(-50%);">
+                    正在期待旅行... ✨
+                </div>
+                <div class="absolute bottom-[46%] left-[50%] w-3 h-3 bg-white border-r-2 border-b-2 border-[#ff8fab] z-40 pointer-events-none bubble-tail opacity-0 transition-opacity duration-300" style="transform: translateX(-50%) rotate(45deg);"></div>
 
-            <!-- 可点击热点：书桌日记、橱柜、床（高亮显示） -->
-            <div id="room-hotspots-layer" class="absolute inset-0 z-30 pointer-events-none">
-                <button type="button" id="hotspot-bed" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 18%; left: 28%;" aria-label="休息">
-                    <div class="room-hotspot-button">
-                        <span>🛏️</span>
-                        <span>休息</span>
-                    </div>
-                </button>
-                <button type="button" id="hotspot-diary" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 20%; right: 18%;" aria-label="打开旅行日记">
-                    <div class="room-hotspot-button">
-                        <span>📚</span>
-                        <span>日记</span>
-                    </div>
-                </button>
-                <button type="button" id="hotspot-cabinet" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 20%; right: 8%;" aria-label="打开旅行橱柜">
-                    <div class="room-hotspot-button">
-                        <span>🎁</span>
-                        <span>橱柜</span>
-                    </div>
-                </button>
-            </div>
-
+                <!-- 可点击热点：书桌日记、橱柜、床（高亮显示） -->
+                <div id="room-hotspots-layer" class="absolute inset-0 z-30 pointer-events-none">
+                    <button type="button" id="hotspot-bed" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 25%; right: 8%;" aria-label="休息">
+                        <div class="room-hotspot-button">
+                            <span>🛏️</span>
+                            <span>休息</span>
+                        </div>
+                    </button>
+                    <button type="button" id="hotspot-diary" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 20%; right: 18%;" aria-label="打开旅行日记">
+                        <div class="room-hotspot-button">
+                            <span>📚</span>
+                            <span>日记</span>
+                        </div>
+                    </button>
+                    <button type="button" id="hotspot-cabinet" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 18%; left: 28%;" aria-label="打开旅行橱柜">
+                        <div class="room-hotspot-button">
+                            <span>🎁</span>
+                            <span>橱柜</span>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1846,21 +1844,40 @@
         const flavor = cityFlavorMap[normalized];
         const visitIndex = appState.locations.length;
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+        
+        // Add time of day
+        const hour = new Date().getHours();
+        let timeOfDay = '白天';
+        if (hour < 6) timeOfDay = '凌晨';
+        else if (hour < 9) timeOfDay = '清晨';
+        else if (hour < 12) timeOfDay = '上午';
+        else if (hour < 14) timeOfDay = '中午';
+        else if (hour < 18) timeOfDay = '午后';
+        else if (hour < 21) timeOfDay = '傍晚';
+        else timeOfDay = '深夜';
 
         const flavorText = flavor
-            ? `\n- 当地氛围关键词：${flavor.tone}。\n- 你们可能会出现在：${flavor.highlights.slice(0, 3).join('、')}。`
+            ? `\n- 当地氛围关键词：${flavor.tone}。\n- 推荐提及的打卡点（选1-2个）：${flavor.highlights.join('、')}。`
             : '';
         const progressText = visitIndex > 1
-            ? `这是我们第 ${visitIndex} 次旅行打卡。`
+            ? `这是我们第 ${visitIndex} 次一起旅行。`
             : '这是我们的第一次真正出发。';
 
         const prompt = [
-            '你是一只电子宠物玩偶，用第一人称为主人写一段旅行日记。',
-            `- 我的性格：${personality}（请在语气和用词上自然体现这种性格特点）。`,
-            `- 我们正在：${location}。${flavorText}`,
-            `- 今天的日期：${date}。${progressText}`,
-            '要求：80～200 字，治愈、轻松，有画面感；不要虚构主人没有输入的地点或任何隐私信息。',
-            '只输出日记正文，不要标题或额外解释。'
+            '你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”给主人写一篇旅行日记。',
+            `\n【当前情境】`,
+            `- 地点：${location}${flavorText}`,
+            `- 时间：${date} ${timeOfDay}`,
+            `- 你的性格：${personality}`,
+            `  * 活泼：喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。`,
+            `  * 贪吃：三句话离不开吃，形容词多与食物有关（如“像果冻一样软的云”），关注气味。`,
+            `  * 文艺：心思细腻，喜欢观察光影、微风，用词优美，略带一点点忧郁或深沉。`,
+            `\n【写作要求】`,
+            `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**（例如：屋檐下的一只懒猫、路边摊冒出的热气、一片形状奇怪的树叶、远处传来的自行车的铃声）。`,
+            `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
+            `3. **情感连接**：表达对主人的依赖或一起旅行的快乐。`,
+            `4. **篇幅**：80-150字左右，短小精悍，治愈风格。`,
+            `5. **格式**：只输出日记正文，不要标题，不要markdown格式。`,
         ].join('\n');
 
         const body = {
@@ -1996,7 +2013,8 @@
                 const label = scene ? scene.label : item.location;
                 const img = scene ? `<img src="${scene.image}" alt="${scene.label}" class="w-12 h-12 rounded-xl object-cover mb-1 border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
                 const fallback = scene ? `<span class="text-2xl mb-1 hidden">🧳</span>` : `<span class="text-2xl mb-1">🧳</span>`;
-                html += `<div class="cabinet-slot" data-cabinet-item="true">${img}${fallback}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
+                const countBadge = item.count > 1 ? `<span class="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">x${item.count}</span>` : '';
+                html += `<div class="cabinet-slot relative" data-cabinet-item="true">${img}${fallback}${countBadge}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
             } else {
                 html += cabinetPlaceholderHTML;
             }
@@ -2014,7 +2032,22 @@
         if (!cabinetGrid) return;
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
         appState.cabinetItems = appState.cabinetItems || [];
-        appState.cabinetItems.unshift({ location, scene });
+        
+        // 检查重复物品
+        const existingItem = appState.cabinetItems.find(item => 
+            (scene && item.scene && item.scene.label === scene.label) || 
+            (!scene && !item.scene && item.location === location)
+        );
+
+        if (existingItem) {
+            existingItem.count = (existingItem.count || 1) + 1;
+            // 将更新后的物品移到最前
+            appState.cabinetItems = appState.cabinetItems.filter(i => i !== existingItem);
+            appState.cabinetItems.unshift(existingItem);
+        } else {
+            appState.cabinetItems.unshift({ location, scene, count: 1 });
+        }
+
         if (appState.cabinetItems.length > CABINET_SLOTS) {
             appState.cabinetItems = appState.cabinetItems.slice(0, CABINET_SLOTS);
         }
