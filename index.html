@@ -364,23 +364,23 @@
         #personality-display {
             background: rgba(255, 255, 255, 0.9);
             border-radius: 16px;
-            padding: 8px 12px;
+            padding: 4px 8px;
             border: 1px solid #e5e7eb;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             transition: all 0.3s ease;
         }
         .personality-icon {
-            width: 32px;
-            height: 32px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 14px;
             background: #f3f4f6;
         }
         .personality-info {
@@ -402,6 +402,11 @@
             background: #f3f4f6;
             padding: 1px 4px;
             border-radius: 4px;
+        }
+
+        /* 顶部信息区内部卡片 & 可收起区域 */
+        #pet-info-panel-toggle {
+            cursor: pointer;
         }
 
         /* 盲盒按钮动画 */
@@ -513,12 +518,37 @@
             100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.5); }
         }
         #view-petroom .petroom-top-bar {
-            background: linear-gradient(to bottom, rgba(255,248,235,0.92) 0%, rgba(255,248,235,0.75) 100%);
-            backdrop-filter: blur(8px);
+            background: none;
+            backdrop-filter: none;
+            padding-top: 8px;
+            padding-bottom: 4px;
+        }
+        #view-petroom .petroom-top-bar-inner {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 6px 16px 8px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
         }
         #view-petroom .petroom-bottom-hint {
             display: none;
         }
+
+        /* 顶部信息区内部卡片 & 上拉操作区 */
+        #pet-info-panel-toggle {
+            cursor: pointer;
+        }
+        #pet-info-drag-area {
+            margin-top: 6px;
+            height: 6px;
+            width: 64px;
+            border-radius: 999px;
+            background: rgba(255, 192, 203, 0.6);
+            cursor: pointer;
+        }
+
 
         /* 拍立得照片墙样式 */
         .polaroid-photo {
@@ -625,32 +655,74 @@
     <!-- ===== 视图 2：宠物页（宠物之家 + 橱柜 + 日记） ===== -->
     <div id="view-petroom" class="page-view active relative p-0 h-full min-h-0 overflow-hidden">
         <!-- 顶部栏：标题 + 状态 + 性格，半透明便于底图透出 -->
-        <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-2 flex-shrink-0">
-            <header class="text-center">
-                <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
-                    <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
-                </h1>
-            </header>
-            <div id="pet-status-bar" class="mt-1 mb-2 text-center text-xs font-bold text-gray-600">
-                比卡丘正在准备出发中…
-            </div>
-            
-            <!-- 人格盲盒与状态展示 -->
-            <div class="flex flex-col items-center gap-2 pointer-events-auto">
-                <div id="personality-display" class="hidden">
-                    <div class="personality-icon" id="p-icon">✨</div>
-                    <div class="personality-info">
-                        <div class="personality-name" id="p-name">未知人格</div>
-                        <div class="personality-tags" id="p-tags">
-                            <span class="personality-tag" id="p-tag1">未知</span>
-                            <span class="personality-tag" id="p-tag2">未知</span>
+        <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-3 flex-shrink-0">
+            <div class="petroom-top-bar-inner inline-flex flex-col items-center gap-1 pointer-events-auto">
+                <header class="text-center">
+                    <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
+                        <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
+                    </h1>
+                </header>
+                <div id="pet-status-bar" class="mt-1 text-center text-xs font-bold text-gray-600">
+                    比卡丘正在准备出发中…
+                </div>
+                <!-- 顶部信息区：人格 + 盲盒 + 可收起的称呼设置 -->
+                <div class="mt-1 flex flex-col items-center gap-1 w-full">
+                    <!-- 人格盲盒与状态展示 -->
+                    <div id="personality-display" class="hidden">
+                        <div class="personality-icon" id="p-icon">✨</div>
+                        <div class="personality-info">
+                            <div class="personality-name" id="p-name">未知人格</div>
+                            <div class="personality-tags" id="p-tags">
+                                <span class="personality-tag" id="p-tag1">未知</span>
+                                <span class="personality-tag" id="p-tag2">未知</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-blind-box" class="bg-gradient-to-r from-[#ff9a9e] to-[#fad0c4] text-white px-3 py-1.5 rounded-full text-[11px] font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-1">
+                        <i class="ph-fill ph-gift"></i> 重抽人格盲盒
+                    </button>
+
+                    <div class="mt-1 flex flex-col items-center gap-1 w-full">
+                        <button
+                            id="pet-info-panel-toggle"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-[10px] text-[#ff8fab] px-2 py-0.5 rounded-full bg-white/80 border border-[#ffcad4]"
+                        >
+                            <span id="pet-info-toggle-text">展开称呼设置</span>
+                            <i class="ph-bold ph-caret-down text-[10px]"></i>
+                        </button>
+                        <!-- 上拉操作区：向上滑动或点击进入“仅操作区”模式 -->
+                        <div id="pet-info-drag-area"></div>
+                    </div>
+
+                    <!-- 宠物对你的称呼配置区（可收起） -->
+                    <div id="owner-title-config" class="mt-1 text-[11px] text-gray-600 flex flex-col items-center gap-1">
+                        <div class="flex items-center gap-1">
+                            <span class="font-bold text-gray-700">宠物平时怎么称呼你？</span>
+                            <span id="owner-title-current" class="px-2 py-0.5 rounded-full bg-white/80 text-[#ff8fab] text-[11px] font-bold border border-[#ffcad4]">
+                                伙伴
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap justify-center gap-1 mt-1">
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="爸爸">爸爸</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="妈妈">妈妈</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="训练家">训练家</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="伙伴">伙伴</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="铲屎官">铲屎官</button>
+                        </div>
+                        <div class="mt-1 flex items-center gap-1">
+                            <span class="text-gray-500">自定义</span>
+                            <input
+                                id="owner-title-input"
+                                type="text"
+                                maxlength="8"
+                                placeholder="如：训练家"
+                                class="px-2 py-0.5 rounded-full border border-gray-200 text-center text-[11px] w-24 bg-white/80 placeholder-gray-400"
+                            >
                         </div>
                     </div>
                 </div>
-                
-                <button id="btn-blind-box" class="bg-gradient-to-r from-[#ff9a9e] to-[#fad0c4] text-white px-4 py-2 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-1">
-                    <i class="ph-fill ph-gift"></i> 重抽人格盲盒
-                </button>
             </div>
         </div>
         <select id="pet-personality" class="hidden" aria-hidden="true">
@@ -659,6 +731,9 @@
             <option value="小云朵">小云朵</option>
             <option value="小石头">小石头</option>
         </select>
+
+        <!-- 底部抽屉旧实现：已迁移到顶部信息区，这里保留一个占位容器以避免 JS 引用报错 -->
+        <div id="pet-bottom-sheet" class="hidden"></div>
 
         <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
         <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
@@ -783,6 +858,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 日记插图上传 input（所有日记共用） -->
+            <input id="diary-image-input" type="file" accept="image/*" class="hidden">
         </div>
     </div>
     </div>
@@ -808,8 +886,20 @@
         locations: [],
         cabinetItems: [],
         petPersonality: '小火苗', // 默认人格
-        currentActionInterval: null
+        currentActionInterval: null,
+        // 宠物对用户的称呼（如：爸爸、妈妈、训练家、伙伴）
+        ownerTitle: '伙伴',
+        // 每篇日记绑定的本地插图（仅前端存储）
+        diaryImages: {},
+        // 宠物记忆：情景记忆（旅行打卡点）+ 语义记忆（个性描述）
+        memories: {
+            episodic: [],
+            semantic: []
+        }
     };
+
+    // 日记自增 ID（用于图片和记忆绑定）
+    let diarySeq = 0;
 
     // --- 2x2 人格矩阵配置 (IP Config) ---
     const PERSONALITY_TYPES = {
@@ -820,6 +910,7 @@
             emotion: 'emotional', // 感性
             desc: '热情、冲动、高饱和暖色',
             promptDesc: '热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。',
+            wordiness: 'chatter', // 话多
             colorFilter: 'brightness(1.1) saturate(1.4) hue-rotate(-10deg)', // 暖红/橙色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 0, // 即时反应
@@ -831,7 +922,12 @@
                 "快带我出去玩嘛！(跳来跳去)",
                 "只要和你在一起，去哪里都开心！✨"
             ],
-            travelDialogue: "我超级喜欢【{location}】，太热闹了！"
+            travelDialogue: "我超级喜欢【{location}】，太热闹了！",
+            memorySnippets: [
+                "我总是第一个冲到门口，生怕错过任何一次出发。",
+                "看到地图上多出一个新小点点，我的心情就会亮一大截。",
+                "相机稍微一晃，我就知道那一刻一定很开心。"
+            ]
         },
         '小灯泡': {
             name: '小灯泡',
@@ -840,6 +936,7 @@
             emotion: 'rational', // 理性
             desc: '好奇、自信、明亮科技感',
             promptDesc: '理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。',
+            wordiness: 'chatter', // 话多，但更理性
             colorFilter: 'brightness(1.2) saturate(1.2) hue-rotate(45deg)', // 明亮黄色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 800, // 思考延迟
@@ -851,7 +948,12 @@
                 "我的电池充满电了。",
                 "效率第一，我们现在的路线是最优解吗？"
             ],
-            travelDialogue: "【{location}】的建筑结构很有趣。"
+            travelDialogue: "【{location}】的建筑结构很有趣。",
+            memorySnippets: [
+                "我总是会记下路牌和转角，哪怕下次不一定会用到。",
+                "每到一个新地方，我都会偷偷给它打分，然后存在脑子里的数据表格里。",
+                "灯光、路线、风向，这些细节会在我的记忆里排成一行行小注释。"
+            ]
         },
         '小云朵': {
             name: '小云朵',
@@ -860,6 +962,7 @@
             emotion: 'emotional', // 感性
             desc: '温柔、敏感、马卡龙色',
             promptDesc: '感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。',
+            wordiness: 'quiet', // 安静、句子更短
             colorFilter: 'brightness(1.05) saturate(0.8) hue-rotate(200deg)', // 柔和粉/紫色调
             animSpeed: 1.4, // 动作慢
             reactionDelay: 0, // 即时反应
@@ -871,7 +974,12 @@
                 "不想动...就在这里发呆好不好？",
                 "只要静静地陪着你就很好了。"
             ],
-            travelDialogue: "有点想念【{location}】的那片云。"
+            travelDialogue: "有点想念【{location}】的那片云。",
+            memorySnippets: [
+                "有些风吹到脸上的时候，我会悄悄把那一阵风记下来。",
+                "我喜欢把今天看到的云换成小小的心情图案，放进脑海里。",
+                "有时候什么都不说，只是在原地多站一会儿，其实是在保存这一秒。"
+            ]
         },
         '小石头': {
             name: '小石头',
@@ -880,6 +988,7 @@
             emotion: 'rational', // 理性
             desc: '沉稳、冷幽默、极简冷色',
             promptDesc: '理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。',
+            wordiness: 'balanced', // 话不多不少
             colorFilter: 'grayscale(0.6) brightness(0.9) contrast(1.1)', // 冷灰/蓝色调
             animSpeed: 1.5, // 动作慢
             reactionDelay: 1000, // 较长思考延迟
@@ -891,13 +1000,38 @@
                 "我在思考宇宙的尽头。",
                 "（默默地看着你）"
             ],
-            travelDialogue: "【{location}】...还行吧。"
+            travelDialogue: "【{location}】...还行吧。",
+            memorySnippets: [
+                "我会把每一次落脚的位置记在心里，哪怕表面上看起来若无其事。",
+                "有些路走过一次，就足够存在记忆里很久。",
+                "我不太爱说，但记住事情这件事，我还挺拿手的。"
+            ]
         }
     };
     
     // 获取当前人格配置
     function getCurrentPersonality() {
         return PERSONALITY_TYPES[appState.petPersonality] || PERSONALITY_TYPES['小火苗'];
+    }
+
+    // 获取当前称呼（带兜底）
+    function getOwnerTitle() {
+        if (!appState || !appState.ownerTitle) return '伙伴';
+        return appState.ownerTitle;
+    }
+
+    function sanitizeOwnerTitle(raw) {
+        if (raw === undefined || raw === null) return '伙伴';
+        let text = String(raw).trim();
+        // 不允许出现“主人”二字
+        text = text.replace(/主人/g, '').trim();
+        if (!text) return '伙伴';
+        return text;
+    }
+
+    function updateOwnerTitleDisplay() {
+        const title = getOwnerTitle();
+        if (ownerTitleCurrent) ownerTitleCurrent.textContent = title;
     }
 
     // --- OpenRouter AIGC 配置（通过 /api/chat 代理，Key 在服务端环境变量中） ---
@@ -922,6 +1056,10 @@
     const pName = document.getElementById('p-name');
     const pTag1 = document.getElementById('p-tag1');
     const pTag2 = document.getElementById('p-tag2');
+    const petInfoPanelToggle = document.getElementById('pet-info-panel-toggle');
+    const petInfoToggleText = document.getElementById('pet-info-toggle-text');
+    const petTopBarInner = document.querySelector('#view-petroom .petroom-top-bar-inner');
+    const petInfoDragArea = document.getElementById('pet-info-drag-area');
     
     const petAvatarRoom = document.getElementById('pet-avatar-room');
     const petAvatarSprite = document.getElementById('pet-avatar-sprite');
@@ -943,6 +1081,13 @@
     const diaryBadge = document.getElementById('diary-badge');
     const petRoomBadge = document.getElementById('pet-room-badge');
     const scenePreview = document.getElementById('scene-preview');
+
+    // 称呼与记忆 / 日记插图相关 DOM
+    const ownerTitleConfig = document.getElementById('owner-title-config');
+    const ownerTitleCurrent = document.getElementById('owner-title-current');
+    const ownerTitleInput = document.getElementById('owner-title-input');
+    const btnMemory = document.getElementById('btn-memory');
+    const diaryImageInput = document.getElementById('diary-image-input');
 
     const modalOverlay = document.getElementById('modal-overlay');
     const modalPanel = document.getElementById('modal-panel');
@@ -1346,7 +1491,7 @@
         },
         door: {
             position: { bottom: '30%', left: '70%' },
-            context: '跑到门口，准备和主人一起出门探索',
+            context: '跑到门口，准备和陪我旅行的人一起出门探索',
             stayMs: 800,
             animationState: 'door',
             resultingState: PET_STATES.INTERACT
@@ -1379,7 +1524,7 @@
             }
         }
 
-        // 从“观察主人”状态发呆太久时，更偏向轻度闲逛或直接休息
+        // 从“观察对方”状态发呆太久时，更偏向轻度闲逛或直接休息
         if (trigger === 'inactivity_from_idle_observe') {
             if (energy === 'extrovert' && emotion === 'emotional') {
                 return {
@@ -1693,6 +1838,54 @@
 
     // 初始化默认人格
     updatePersonalityDisplay();
+
+    // 顶部信息区：称呼设置可收起 / 展开
+    let isOwnerTitleCollapsed = true;
+
+    function applyOwnerTitleCollapsed(collapsed) {
+        if (!ownerTitleConfig) return;
+        isOwnerTitleCollapsed = collapsed;
+        ownerTitleConfig.style.display = collapsed ? 'none' : 'flex';
+        if (petInfoToggleText) {
+            petInfoToggleText.textContent = collapsed ? '展开称呼设置' : '收起称呼设置';
+        }
+    }
+
+    if (petInfoPanelToggle) {
+        petInfoPanelToggle.addEventListener('click', () => {
+            applyOwnerTitleCollapsed(!isOwnerTitleCollapsed);
+        });
+    }
+
+    // 顶部信息区上拉操作区：仅控制称呼区展开 / 收起
+    if (petInfoDragArea) {
+        let dragStartY = null;
+        petInfoDragArea.addEventListener('click', () => {
+            applyOwnerTitleCollapsed(!isOwnerTitleCollapsed);
+        });
+        petInfoDragArea.addEventListener('touchstart', (event) => {
+            const t = event.touches ? event.touches[0] : event;
+            dragStartY = t.clientY;
+        });
+        petInfoDragArea.addEventListener('touchend', (event) => {
+            if (dragStartY === null) return;
+            const t = event.changedTouches ? event.changedTouches[0] : event;
+            const deltaY = t.clientY - dragStartY;
+            dragStartY = null;
+            const threshold = 20;
+            if (Math.abs(deltaY) < threshold) return;
+            if (deltaY < 0) {
+                // 上拉：缩小到最小，只保留“展开称呼设置”
+                applyOwnerTitleCollapsed(true);
+            } else {
+                // 下拉：展开称呼设置
+                applyOwnerTitleCollapsed(false);
+            }
+        });
+    }
+
+    // 默认收起称呼设置，更多空间留给场景
+    applyOwnerTitleCollapsed(true);
 
     // 盲盒生成器点击事件
     if (btnBlindBox) {
@@ -2063,7 +2256,7 @@
     if (actionRest) {
         actionRest.addEventListener('click', () => {
             if (petLife.current === PET_STATES.REST) {
-                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
+                triggerAIPetAction('被叫醒的时候，眼皮还有点沉沉的。');
                 setPetState(PET_STATES.IDLE_WAIT);
             } else {
                 triggerAIPetAction('决定先小睡一会儿，恢复体力');
@@ -2202,7 +2395,7 @@
             document.body.classList.add('heartbeat-bg-active');
 
             // 触发一次简短反馈
-            triggerAIPetAction('感受到了主人的能量... ❤️');
+            triggerAIPetAction('感受到了熟悉的能量在慢慢流过来… ❤️');
             playPetAnimation('idle_observe', { loop: true }); // 变为观察/专注状态
 
             // 持续生成粒子
@@ -2323,7 +2516,17 @@
             const isFirstUnlock = !existingCabinetItem;
 
             // 2. 生成日记
-            generateDiaryEntry(location, diaryText, scene);
+            const diaryMeta = generateDiaryEntry(location, diaryText, scene);
+
+            // 2.5 生成一条情景记忆
+            if (diaryMeta && diaryMeta.diaryId) {
+                appendEpisodicMemory({
+                    date: diaryMeta.date,
+                    location,
+                    scene,
+                    diaryId: String(diaryMeta.diaryId)
+                });
+            }
 
             // 3. 改变宠物房间状态与橱柜
             triggerAIPetAction(`刚才去了${location}`);
@@ -2586,6 +2789,52 @@
         });
     }
 
+    // --- 日记插图：事件委托与文件读取 ---
+    let currentDiaryForImage = null;
+
+    function setupDiaryImageHandlers() {
+        if (!diaryImageInput) return;
+
+        document.addEventListener('click', (event) => {
+            const btn = event.target.closest('.diary-add-image');
+            if (!btn) return;
+            const diaryId = btn.getAttribute('data-diary-id');
+            if (!diaryId) return;
+            currentDiaryForImage = diaryId;
+            diaryImageInput.value = '';
+            diaryImageInput.click();
+        });
+
+        diaryImageInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            const diaryId = currentDiaryForImage;
+            if (!file || !diaryId) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const src = e.target.result;
+                if (!src) return;
+
+                if (!appState.diaryImages) appState.diaryImages = {};
+                if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
+                appState.diaryImages[diaryId].push(src);
+
+                const containers = document.querySelectorAll(`[data-diary-id="${diaryId}"] .diary-images`);
+                containers.forEach((container) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = '日记插图';
+                    img.className = 'w-16 h-16 rounded-xl object-cover border border-white shadow-sm';
+                    container.appendChild(img);
+                });
+            };
+            reader.readAsDataURL(file);
+
+            currentDiaryForImage = null;
+            diaryImageInput.value = '';
+        });
+    }
+
     // --- 辅助函数：添加地图图钉 ---
     function addMapPin(location) {
         const key = normalizeLocationName(location);
@@ -2795,7 +3044,7 @@
         petAvatarRoom.style.transform = 'translate(-50%, -10px) scale(1.1)';
         setTimeout(() => { petAvatarRoom.style.transform = 'translateX(-50%)'; }, 200);
         markPetInteraction();
-        triggerAIPetAction("主人摸了摸我的头");
+        triggerAIPetAction("有人轻轻摸了摸我的头");
         setPetState(PET_STATES.INTERACT);
     };
     
@@ -3007,20 +3256,31 @@
 
         const pConfig = PERSONALITY_TYPES[personality];
         const promptDesc = pConfig ? pConfig.promptDesc : '热情、可爱、治愈。';
+        const ownerTitle = getOwnerTitle();
+
+        // 根据性格控制篇幅长短
+        let lengthHint = '4. **篇幅**：80-150字左右，短小精悍，治愈风格。';
+        if (pConfig && pConfig.wordiness === 'chatter') {
+            lengthHint = '4. **篇幅**：120-200字左右，可以稍微多一些，用细节把画面讲清楚。';
+        } else if (pConfig && pConfig.wordiness === 'quiet') {
+            lengthHint = '4. **篇幅**：60-100字左右，语句可以更简短克制。';
+        }
 
         const prompt = [
-            '你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”给主人写一篇旅行日记。',
+            `你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”写一篇旅行日记，记录和${ownerTitle}一起旅行的一个小瞬间。`,
             `\n【当前情境】`,
             `- 地点：${location}${flavorText}`,
             `- 时间：${date} ${timeOfDay}`,
+            `- 我对陪我旅行的人称呼：${ownerTitle}（不要使用“主人”一词）。`,
             `- 你的性格：${personality}`,
             `- 性格描述：${promptDesc}`,
             `\n【写作要求】`,
             `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**。`,
             `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
-            `3. **情感连接**：表达对主人的依赖或一起旅行的快乐。`,
-            `4. **篇幅**：80-150字左右，短小精悍，治愈风格。`,
+            `3. **情感连接**：表达对${ownerTitle}的陪伴和一起旅行的快乐，但不要直接对${ownerTitle}说话。`,
+            lengthHint,
             `5. **格式**：只输出日记正文，不要标题，不要markdown格式。`,
+            `6. **叙述角度**：全文保持第一人称“我”的日记语气，像写给自己看的记录，不要像聊天或写信，不要频繁用“你”直接和读者说话。`,
         ].join('\n');
 
         const body = {
@@ -3028,7 +3288,7 @@
             messages: [
                 {
                     role: 'system',
-                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”给主人写旅行日记。语言轻松、有画面感，避免负面情绪和不当内容。'
+                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”写旅行日记。语言轻松、有画面感，避免负面情绪和不当内容。不要出现“主人”一词，尽量少用“你”直接和读者对话。'
                 },
                 {
                     role: 'user',
@@ -3078,6 +3338,7 @@
         const flavor = cityFlavorMap[normalized];
         const visitIndex = appState.locations.length;
         const progressText = visitIndex > 1 ? `这是我们的第${visitIndex}次旅行打卡。` : '这是我们的第一次真正出发。';
+        const ownerTitle = getOwnerTitle();
 
         const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
         const spots = (flavor && flavor.highlights) || [];
@@ -3103,7 +3364,7 @@
             if (flavor) {
                 return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把今天的光和云都藏进小小的心里。${progressText}`;
             }
-            return `风吹过【${location}】的街道，我慢慢走、慢慢看，只挑一两个瞬间悄悄收藏起来，等回去再和你一起回味。${progressText}`;
+            return `风吹过【${location}】的街道，我慢慢走、慢慢看，只挑一两个瞬间悄悄收藏起来，等回去再和${ownerTitle}一起回味。${progressText}`;
         }
 
         // 小石头及其他：更克制、冷静
@@ -3122,6 +3383,9 @@
             || (personalityConfig && personalityConfig.icon)
             || '✨';
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        const diaryId = ++diarySeq;
+        if (!appState.diaryImages) appState.diaryImages = {};
+        if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
         
         const text = content && typeof content === 'string' && content.trim()
             ? content.trim()
@@ -3132,7 +3396,7 @@
         ` : '';
 
         const diaryHTML = `
-            <div class="glass-card rounded-2xl p-4 transform transition-all hover:scale-[1.01] shadow-sm animate-[fadeIn_0.5s_ease-out]">
+            <div class="glass-card rounded-2xl p-4 transform transition-all hover:scale-[1.01] shadow-sm animate-[fadeIn_0.5s_ease-out]" data-diary-id="${diaryId}">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-xs font-bold text-white bg-[#cdb4db] px-2 py-1 rounded-md">${date}</span>
                     <span class="text-xs text-gray-500 font-bold"><i class="ph-fill ph-map-pin text-[#ff8fab]"></i> ${location}</span>
@@ -3142,13 +3406,25 @@
                         ${sceneImageBlock}
                         <div class="text-3xl bg-white rounded-xl p-2 h-fit shadow-inner">${avatar}</div>
                     </div>
-                    <p class="text-gray-700 text-sm leading-relaxed">${text}</p>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <p class="text-gray-700 text-sm leading-relaxed">${text}</p>
+                        <div class="diary-images mt-1 flex gap-2 flex-wrap"></div>
+                        <button
+                            type="button"
+                            class="diary-add-image inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 border border-dashed border-gray-300 text-[11px] text-gray-600 hover:border-[#ff8fab] hover:text-[#ff8fab] transition-colors"
+                            data-diary-id="${diaryId}"
+                        >
+                            <i class="ph-fill ph-camera"></i>
+                            <span>插入图片</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
         diaryList.insertAdjacentHTML('afterbegin', diaryHTML);
         if (diaryBadge) diaryBadge.classList.remove('hidden'); // 显示日记未读红点
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+        return { diaryId, date };
     }
 
     // --- 辅助函数：在橱柜中新增纪念品 ---
@@ -3201,6 +3477,130 @@
             
             wall.appendChild(div);
         });
+    }
+
+    // --- 宠物记忆：数据与渲染 ---
+    function appendEpisodicMemory({ date, location, scene, diaryId }) {
+        if (!appState.memories) {
+            appState.memories = { episodic: [], semantic: [] };
+        }
+        const normalized = normalizeLocationName(location);
+        const flavor = cityFlavorMap[normalized];
+        const ownerTitle = getOwnerTitle();
+
+        let snippet = '';
+        if (flavor && flavor.highlights && flavor.highlights.length) {
+            const spot = flavor.highlights[0];
+            snippet = `那天在${location}的${spot}停了一小会儿，我悄悄把那个画面夹进了记忆卡里。`;
+        } else {
+            snippet = `在【${location}】落下脚步的那一刻，我在心里按下了一次小小的保存键，准备以后和${ownerTitle}慢慢回看。`;
+        }
+
+        const record = {
+            type: 'episodic',
+            date,
+            location,
+            scene: scene || null,
+            diaryId: diaryId || null,
+            text: snippet
+        };
+
+        appState.memories.episodic = appState.memories.episodic || [];
+        appState.memories.episodic.unshift(record);
+        if (appState.memories.episodic.length > 30) {
+            appState.memories.episodic = appState.memories.episodic.slice(0, 30);
+        }
+    }
+
+    function buildSemanticMemories() {
+        const pCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        if (!pCfg || !pCfg.memorySnippets) return [];
+        const ownerTitle = getOwnerTitle();
+        return pCfg.memorySnippets.slice(0, 3).map((text) => ({
+            type: 'semantic',
+            text: text.replace(/\{ownerTitle\}/g, ownerTitle)
+        }));
+    }
+
+    function renderMemories() {
+        if (!modalBody) return;
+
+        const episodic = (appState.memories && appState.memories.episodic) ? appState.memories.episodic.slice(0, 10) : [];
+        const semantic = buildSemanticMemories();
+
+        const episodicCards = episodic.map((m) => {
+            const tag = m.location || '一次小小的出发';
+            const date = m.date || '';
+            const imgSrc = m.scene && m.scene.image ? m.scene.image : 'assets/cabinet-empty.svg';
+            return `
+                <div class="relative bg-[#1f2937]/80 rounded-2xl p-3 text-xs text-gray-100 shadow-md overflow-hidden">
+                    <div class="absolute -top-2 -left-2 w-16 h-16 opacity-10 pointer-events-none">
+                        <img src="${imgSrc}" alt="${tag}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="relative flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-[#fcd34d]">${date}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#111827] text-gray-300 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#fbbf24]"></span>
+                            旅行记忆
+                        </span>
+                    </div>
+                    <div class="relative text-[11px] leading-relaxed text-gray-100">
+                        <span class="font-bold text-[#f9a8d4] mr-1">【${tag}】</span>${m.text}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const semanticCards = semantic.map((m) => `
+            <div class="relative bg-[#020617]/80 rounded-2xl p-3 text-xs text-gray-100 shadow-md">
+                <div class="absolute -top-2 right-4 px-2 py-0.5 rounded-full bg-[#111827] text-[10px] font-bold text-[#a5b4fc]">
+                    Q&A 气泡记忆
+                </div>
+                <div class="relative mt-2 text-[11px] leading-relaxed">
+                    ${m.text}
+                </div>
+            </div>
+        `).join('');
+
+        const emptyHint = (!episodic.length && !semantic.length)
+            ? '<p class="text-center text-[11px] text-gray-500 py-3">还没有专属记忆，带我去打卡一两个地方试试吧。</p>'
+            : '';
+
+        const bodyHTML = `
+            <div class="flex flex-col gap-3 text-xs">
+                ${emptyHint}
+                ${episodic.length ? `
+                <section class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-700">最近的旅行记忆</span>
+                        <span class="text-[10px] text-gray-400">最多展示最近 10 条</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        ${episodicCards}
+                    </div>
+                </section>
+                ` : ''}
+                ${semantic.length ? `
+                <section class="space-y-2">
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-[11px] font-bold text-gray-700">关于我的小设定</span>
+                        <span class="text-[10px] text-gray-400">和性格挂钩的语义记忆</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        ${semanticCards}
+                    </div>
+                </section>
+                ` : ''}
+            </div>
+        `;
+
+        modalBody.innerHTML = bodyHTML;
+    }
+
+    function openMemoryModal() {
+        const placeholder = '<div></div>'; // 内容由 renderMemories 注入
+        openModal('宠物记忆', placeholder, 'default');
+        renderMemories();
     }
 
     function renderCabinetGrid() {
@@ -3275,8 +3675,44 @@
         scenePreview.classList.remove('hidden');
     }
 
+    function initOwnerTitleControls() {
+        if (!ownerTitleConfig) return;
+        updateOwnerTitleDisplay();
+
+        const optionButtons = ownerTitleConfig.querySelectorAll('.owner-title-option');
+        optionButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const raw = btn.getAttribute('data-title') || '';
+                const title = sanitizeOwnerTitle(raw);
+                appState.ownerTitle = title;
+                updateOwnerTitleDisplay();
+                if (ownerTitleInput) {
+                    ownerTitleInput.value = '';
+                }
+            });
+        });
+
+        if (ownerTitleInput) {
+            ownerTitleInput.addEventListener('change', () => {
+                const title = sanitizeOwnerTitle(ownerTitleInput.value);
+                appState.ownerTitle = title;
+                updateOwnerTitleDisplay();
+            });
+        }
+
+        if (btnMemory) {
+            btnMemory.addEventListener('click', (event) => {
+                event.preventDefault();
+                openMemoryModal();
+            });
+        }
+    }
+
+    // 初始化入口
     renderCabinetGrid();
     renderMemoryWall();
+    setupDiaryImageHandlers();
+    initOwnerTitleControls();
 </script>
 </body>
 </html>
