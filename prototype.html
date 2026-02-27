@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IP伴游宠物 - MVP (升级版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        
+        body {
+            background-color: #f0f4f8; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 414px; 
+            height: 100vh;
+            max-height: 896px;
+            background-color: #fffaf0; 
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        @media (min-width: 420px) {
+            #app-container {
+                height: 850px;
+                border-radius: 40px;
+                border: 8px solid #333;
+            }
+        }
+
+        .cute-font { font-family: 'ZCOOL KuaiLe', cursive; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 2px solid white;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+        }
+
+        .cabinet-modal {
+            background: linear-gradient(135deg, #e8dcc8 0%, #dfd0b8 50%, #e5d9c4 100%);
+            color: #5c4a3a;
+        }
+        .cabinet-modal .text-gray-800,
+        .cabinet-modal .text-gray-500 { color: #5c4a3a; }
+        .cabinet-modal .text-gray-400 { color: #6b5b4f; }
+        .cabinet-shelf {
+            background: rgba(212, 196, 168, 0.35);
+            border: 1px solid #c4a882;
+            border-radius: 1rem;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.06);
+            padding: 0.5rem;
+        }
+        .cabinet-slot {
+            background: #f0e9df;
+            border: 1px solid #d4c4a8;
+            border-radius: 1rem;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+            color: #5c4a3a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 72px;
+            padding: 0.5rem;
+            font-size: 11px;
+        }
+        .cabinet-slot--empty { color: #6b5b4f; font-size: 12px; }
+        .cabinet-empty-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            margin-bottom: 0.25rem;
+            opacity: 0.85;
+            color: #6b5b4f;
+        }
+        .cabinet-slot img { border-color: #d4c4a8; }
+
+        /* 导航切换动画 */
+        .nav-item { transition: all 0.3s ease; }
+        .nav-item.active {
+            color: #ff8fab;
+            transform: translateY(-4px) scale(1.1);
+        }
+
+        /* 视图切换动画 */
+        .page-view {
+            display: none;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .page-view.active {
+            display: flex;
+            flex-direction: column;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 地图图钉掉落动画 */
+        @keyframes dropPin {
+            0% { transform: translateY(-30px) scale(2); opacity: 0; }
+            70% { transform: translateY(5px) scale(0.9); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .pin-drop { animation: dropPin 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* 地图容器：北—南渐变底色区分 */
+        #china-map-container {
+            background: linear-gradient(to bottom,
+                #e8f4fc 0%,
+                #f0f9ff 35%,
+                #f5fcf9 70%,
+                #fefce8 100%);
+        }
+
+        /* 地图省份热点：动漫风可点击区域，默认不显示避免像常驻图钉 */
+        .map-hotspot {
+            position: absolute;
+            width: 8%;
+            height: 8%;
+            min-width: 24px;
+            min-height: 24px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            cursor: pointer;
+            background: transparent;
+            opacity: 0;
+            transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+        }
+        .map-hotspot:hover,
+        .map-hotspot:focus {
+            opacity: 1;
+            background: rgba(255, 143, 171, 0.4);
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+        .map-hotspot:active {
+            transform: translate(-50%, -50%) scale(0.98);
+        }
+
+        /* 宠物在房间的轻微呼吸动画 */
+        @keyframes breathe {
+            0%, 100% { transform: translate(-50%, 0) scale(1); }
+            50% { transform: translate(-50%, -4px) scale(1.02); }
+        }
+        .pet-breathe { animation: breathe 3s ease-in-out infinite; }
+        
+        /* 宠物不同状态的身体动效（作用于图片本身） */
+        @keyframes petIdleMotion {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-3px) scale(1.02); }
+        }
+        .pet-anim-idle {
+            animation: petIdleMotion 1.4s ease-in-out infinite;
+        }
+
+        @keyframes petExcitedMotion {
+            0%, 100% { transform: translateY(0) scale(1); }
+            25% { transform: translateY(-8px) scale(1.1) rotate(-4deg); }
+            50% { transform: translateY(-4px) scale(1.04) rotate(3deg); }
+            75% { transform: translateY(-10px) scale(1.08) rotate(-2deg); }
+        }
+        .pet-anim-excited {
+            animation: petExcitedMotion 0.7s ease-out infinite;
+            transform-origin: center bottom;
+        }
+
+        @keyframes petSleepMotion {
+            0%, 100% { transform: translateY(4px) scale(0.94) rotate(-8deg); opacity: 0.9; }
+            50% { transform: translateY(6px) scale(0.94) rotate(-10deg); opacity: 0.8; }
+        }
+        .pet-anim-sleep {
+            animation: petSleepMotion 1.6s ease-in-out infinite;
+            transform-origin: center bottom;
+        }
+
+        @keyframes petEatMotion {
+            0%, 100% { transform: translateY(0) scale(1); }
+            25% { transform: translateY(-4px) scale(1.02); }
+            50% { transform: translateY(1px) scale(0.98); }
+            75% { transform: translateY(-3px) scale(1.04); }
+        }
+        .pet-anim-eat {
+            animation: petEatMotion 0.8s ease-in-out infinite;
+            transform-origin: center bottom;
+        }
+
+        @keyframes petDoorMotion {
+            0% { transform: translateX(0) scale(1); }
+            30% { transform: translateX(6px) scale(1.02); }
+            60% { transform: translateX(10px) scale(1.05); }
+            100% { transform: translateX(14px) scale(1.05); }
+        }
+        .pet-anim-door {
+            animation: petDoorMotion 0.6s ease-out forwards;
+            transform-origin: center bottom;
+        }
+
+        @keyframes petPlantMotion {
+            0%, 100% { transform: translateY(0) scale(1); }
+            25% { transform: translateY(-3px) scale(1.03); }
+            50% { transform: translateY(-6px) scale(1.06); }
+            75% { transform: translateY(-3px) scale(1.03); }
+        }
+        .pet-anim-plant {
+            animation: petPlantMotion 1.2s ease-in-out infinite;
+        }
+        
+        /* 气泡浮动动画 */
+        @keyframes bubbleFloat {
+            0%, 100% { transform: translate(-50%, 0); }
+            50% { transform: translate(-50%, -6px); }
+        }
+        .bubble-float { animation: bubbleFloat 4s ease-in-out infinite; }
+
+        /* 宠物移动与房间热点样式 */
+        .pet-can-move {
+            transition: bottom 0.4s ease, left 0.4s ease, transform 0.4s ease;
+        }
+
+        .room-hotspot {
+            position: absolute;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .room-hotspot-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 6px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid #ffffff;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(8px);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .room-hotspot-button span:first-child {
+            font-size: 1.25rem;
+            margin-bottom: 2px;
+        }
+
+        .room-hotspot-button:hover,
+        .room-hotspot-button:active {
+            transform: translateY(-2px) scale(1.06);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+        }
+
+        @keyframes hotspotWiggle {
+            0% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-2px) rotate(-6deg); }
+            50% { transform: translateY(0) rotate(4deg); }
+            75% { transform: translateY(-1px) rotate(-3deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        .room-hotspot-wiggle {
+            animation: hotspotWiggle 0.4s ease-out;
+        }
+
+        /* 可交互热点高亮（床、橱柜、日记）- 明显可点击 */
+        .room-hotspot-highlight .room-hotspot-button {
+            box-shadow: 0 0 0 3px rgba(255, 182, 167, 0.95), 0 0 16px rgba(255, 143, 171, 0.6), 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .room-hotspot-highlight .room-hotspot-button:hover,
+        .room-hotspot-highlight .room-hotspot-button:active {
+            box-shadow: 0 0 0 3px rgba(255, 182, 167, 1), 0 0 24px rgba(255, 143, 171, 0.8), 0 6px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px) scale(1.06);
+            animation-play-state: paused;
+        }
+        /* 热点轻微呼吸高亮，提示可点击 */
+        @keyframes hotspotGlow {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(255, 182, 167, 0.9), 0 0 14px rgba(255, 143, 171, 0.5); }
+            50% { box-shadow: 0 0 0 3px rgba(255, 182, 167, 1), 0 0 20px rgba(255, 143, 171, 0.7); }
+        }
+        .room-hotspot-highlight .room-hotspot-button {
+            animation: hotspotGlow 2.5s ease-in-out infinite;
+        }
+
+        /* 皮卡丘到达目标时的跳跃动效 */
+        @keyframes petJumpLand {
+            0% { transform: translateX(-50%) translateY(0) scale(1); }
+            40% { transform: translateX(-50%) translateY(-18px) scale(1.08); }
+            70% { transform: translateX(-50%) translateY(-4px) scale(1.02); }
+            100% { transform: translateX(-50%) translateY(0) scale(1); }
+        }
+        .pet-anim-jump {
+            animation: petJumpLand 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* 性格胶囊：未选中 / 选中 */
+        .personality-pill {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1.5px solid #e5e7eb;
+            color: #6b7280;
+        }
+        .personality-pill:hover {
+            border-color: #ffb5a7;
+            color: #374151;
+        }
+        .personality-pill.active {
+            background: rgba(255, 143, 171, 0.35);
+            border-color: #ff8fab;
+            color: #be185d;
+        }
+
+        /* 气泡小尾巴与气泡同步显隐 */
+        .bubble-tail { pointer-events: none; }
+
+        /* 宠物页入场：房间卡片与宠物轻微动画 */
+        .page-view#view-petroom.entrance .room-viewport-entrance {
+            animation: roomEntrance 0.4s ease-out forwards;
+        }
+        .page-view#view-petroom.entrance #pet-avatar-room {
+            animation: petEntrance 0.35s ease-out forwards;
+        }
+        @keyframes roomEntrance {
+            from { opacity: 0.85; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes petEntrance {
+            from { opacity: 0; transform: translate(-50%, 0) scale(0.92); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        /* 宠物 Tab 全页底图铺满 */
+        #room-scene {
+            background-image: url('img_v3_02v9_e5e8fa0c-9998-4db2-954f-3108a59180bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        #view-petroom .petroom-top-bar {
+            background: linear-gradient(to bottom, rgba(255,248,235,0.92) 0%, rgba(255,248,235,0.75) 100%);
+            backdrop-filter: blur(8px);
+        }
+        #view-petroom .petroom-bottom-hint {
+            background: linear-gradient(to top, rgba(255,248,235,0.9), transparent);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <!-- 内容槽：两个 Tab 共用同一高度，互不挤压 -->
+    <div id="main-content-slot" class="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <!-- ===== 视图 1：首页地图 (Tab 1) ===== -->
+    <div id="view-home" class="page-view active bg-[#fffaf0] p-6 h-full min-h-0 overflow-hidden">
+        <header class="text-center mb-4 pt-4 flex-shrink-0">
+            <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
+                <i class="ph-fill ph-compass text-[#a2d2ff]"></i> 旅行足迹
+            </h1>
+        </header>
+
+        <!-- 动漫风格可交互中国地图（使用 Wikimedia 公有领域 SVG） -->
+        <div id="china-map-container" class="relative w-full flex-1 min-h-[200px] rounded-[40px] border-[6px] border-[#e0f7fa] shadow-[0_8px_32px_rgba(162,210,255,0.35)] overflow-hidden mb-4 flex items-center justify-center transition-all duration-300 hover:shadow-[0_12px_40px_rgba(162,210,255,0.4)]">
+            
+            <!-- 现成中国省份地图（网上 SVG，公有领域） -->
+            <img src="https://upload.wikimedia.org/wikipedia/commons/f/fe/China_blank_province_map.svg" alt="中国地图" id="china-map-img" class="absolute w-full h-full object-contain p-3 z-10 opacity-95"
+                 onerror="this.style.display='none'; document.getElementById('map-fallback').style.display='flex';">
+            
+            <!-- 在线预览时的优雅占位符（当图片加载失败时显示） -->
+            <div id="map-fallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#f8fdfd] text-[#4a7c59] z-0" style="display: none;">
+                <i class="ph-fill ph-image text-5xl mb-2 text-[#a2d2ff] opacity-70"></i>
+                <span class="font-bold text-sm">地图加载失败，请检查网络</span>
+                <span class="text-xs mt-1 text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm mt-2">使用 assets/map/china-kawaii-map.png 作为本地备用</span>
+            </div>
+            
+            <!-- 可点击省份热点层（点击即填入地点并打卡） -->
+            <div id="map-hotspots" class="absolute inset-0 z-15"></div>
+            
+            <!-- 动态打卡图钉容器 -->
+            <div id="map-pins-container" class="absolute inset-0 z-20 pointer-events-none">
+                <!-- 打卡后图钉会动态插入此处 -->
+            </div>
+        </div>
+
+        <!-- 特殊目的地场景预览（例如：埃及金字塔） -->
+        <div id="scene-preview" class="mt-2 hidden flex-shrink-0">
+            <!-- 由 JS 在打卡特定地点后填充卡片内容 -->
+        </div>
+
+        <!-- 打卡控制面板 -->
+        <div class="glass-card rounded-3xl p-5 min-w-0 overflow-hidden flex-shrink-0">
+            <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
+                <i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 记录新旅程
+            </h3>
+            <div class="flex gap-2 min-w-0">
+                <input type="text" id="location-input" placeholder="输入地点，如：武汉" class="flex-1 min-w-0 bg-white border-2 border-transparent focus:border-[#ff8fab] rounded-2xl px-4 py-3 outline-none shadow-sm text-gray-700 transition-all">
+                <button id="btn-checkin" class="flex-shrink-0 bg-[#ff8fab] hover:bg-[#ff7b9c] text-white font-bold rounded-2xl px-4 py-3 transition-colors shadow-md whitespace-nowrap text-sm">
+                    去打卡
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 视图 2：宠物页（宠物之家 + 橱柜 + 日记） ===== -->
+    <div id="view-petroom" class="page-view relative p-0 h-full min-h-0 overflow-hidden">
+        <!-- 顶部栏：标题 + 状态 + 性格，半透明便于底图透出 -->
+        <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-2 flex-shrink-0">
+            <header class="text-center">
+                <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
+                    <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
+                </h1>
+            </header>
+            <div id="pet-status-bar" class="mt-1 mb-2 text-center text-xs font-bold text-gray-600">
+                比卡丘正在准备出发中…
+            </div>
+            <div id="personality-pills" class="flex justify-center gap-2 pointer-events-auto">
+                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="活泼">活泼</button>
+                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="贪吃">贪吃</button>
+                <button type="button" class="personality-pill px-4 py-2 rounded-full text-xs font-bold transition-all duration-200" data-value="文艺">文艺</button>
+            </div>
+        </div>
+        <select id="pet-personality" class="hidden" aria-hidden="true">
+            <option value="活泼" selected>活泼</option>
+            <option value="贪吃">贪吃</option>
+            <option value="文艺">文艺</option>
+        </select>
+
+        <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
+        <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
+            <div id="room-scene" class="absolute left-0 top-0 w-full h-full pointer-events-none" style="transform-origin: 0 0;">
+                <!-- 不再单独放房间图，使用整页底图 -->
+
+            <!-- 宠物主体 -->
+            <div id="pet-avatar-room" class="absolute bottom-[25%] left-[50%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
+                <img id="pet-avatar-sprite" src="比卡丘动画导出/观察/flog_guancha_002.png" alt="旅行宠物" class="w-24 h-24 object-contain pointer-events-none select-none">
+            </div>
+            
+            <!-- 互动气泡 -->
+            <div id="pet-action-bubble" class="absolute bottom-[48%] left-[50%] bubble-float bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-xl text-sm font-bold text-gray-700 whitespace-nowrap z-50 border-2 border-[#ff8fab] transition-all duration-300 pointer-events-none opacity-0" style="transform: translateX(-50%);">
+                正在期待旅行... ✨
+            </div>
+            <div class="absolute bottom-[46%] left-[50%] w-3 h-3 bg-white border-r-2 border-b-2 border-[#ff8fab] z-40 pointer-events-none bubble-tail opacity-0 transition-opacity duration-300" style="transform: translateX(-50%) rotate(45deg);"></div>
+
+            <!-- 可点击热点：书桌日记、橱柜、床（高亮显示） -->
+            <div id="room-hotspots-layer" class="absolute inset-0 z-30 pointer-events-none">
+                <button type="button" id="hotspot-bed" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 18%; left: 28%;" aria-label="休息">
+                    <div class="room-hotspot-button">
+                        <span>🛏️</span>
+                        <span>休息</span>
+                    </div>
+                </button>
+                <button type="button" id="hotspot-diary" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="bottom: 20%; right: 18%;" aria-label="打开旅行日记">
+                    <div class="room-hotspot-button">
+                        <span>📚</span>
+                        <span>日记</span>
+                    </div>
+                </button>
+                <button type="button" id="hotspot-cabinet" class="room-hotspot room-hotspot-highlight pointer-events-auto" style="top: 20%; right: 8%;" aria-label="打开旅行橱柜">
+                    <div class="room-hotspot-button">
+                        <span>🎁</span>
+                        <span>橱柜</span>
+                    </div>
+                </button>
+            </div>
+
+            </div>
+        </div>
+
+        <!-- 首次进入引导 -->
+        <p id="room-hint" class="absolute top-28 left-0 w-full z-10 text-center text-[10px] text-gray-500 mt-1 transition-opacity duration-500 flex-shrink-0 pointer-events-none" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">左右滑动、双指缩放可查看小屋</p>
+
+        <!-- 外置操作栏（保留，与场景内热点二选一或并用） -->
+        <div id="petroom-action-bar" class="absolute bottom-16 left-4 right-4 z-10 glass-card rounded-2xl p-3 mx-4 mt-2 mb-2 flex justify-around items-center gap-2 flex-shrink-0 pointer-events-auto">
+            <button type="button" id="action-rest" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 transition-transform active:scale-95" aria-label="休息">
+                <span class="text-xl">🛏️</span>
+                <span class="text-[11px] font-bold text-gray-700">休息</span>
+            </button>
+            <button type="button" id="action-cabinet" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行橱柜">
+                <span class="text-xl relative"><span id="action-cabinet-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-[#9bdeac] rounded-full hidden"></span>🎁</span>
+                <span class="text-[11px] font-bold text-gray-700">橱柜</span>
+            </button>
+            <button type="button" id="action-diary" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行日记">
+                <span class="text-xl relative"><span id="action-diary-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>📚</span>
+                <span class="text-[11px] font-bold text-gray-700">日记</span>
+            </button>
+        </div>
+
+        <p class="petroom-bottom-hint absolute bottom-0 left-0 w-full z-10 text-center text-[10px] text-gray-600 py-2 px-4 pointer-events-none"><i class="ph-fill ph-info"></i> 宠物状态会根据你的旅行和它的性格变化哦~</p>
+
+        <!-- 隐藏容器：承载旅行橱柜与旅行日记内容，正常视图中不展示 -->
+        <div id="petroom-hidden-containers" class="hidden">
+            <div id="cabinet-grid" class="cabinet-shelf grid grid-cols-4 grid-rows-3 gap-2 min-h-[240px]">
+                <!-- 12 格由 JS renderCabinetGrid() 渲染 -->
+            </div>
+
+            <div id="diary-list" class="flex flex-col gap-4">
+                <!-- 默认日记 -->
+                <div class="glass-card rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-[#cdb4db] bg-white px-2 py-1 rounded-md shadow-sm">今天</span>
+                        <span class="text-xs text-gray-500 font-bold"><i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 温馨小屋</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="text-3xl bg-white rounded-xl p-2 h-fit shadow-sm">🐰</div>
+                        <p class="text-gray-700 text-sm leading-relaxed">你好！我是你的专属伴游宠物。我已经准备好和你一起走遍中国啦，快带我去打卡吧！</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- /main-content-slot -->
+
+    <!-- ===== 底部导航栏（参与文档流，固定高度） ===== -->
+    <nav class="flex-shrink-0 w-full h-20 bg-white/95 backdrop-blur-md rounded-t-[30px] shadow-[0_-15px_30px_rgba(0,0,0,0.04)] flex justify-around items-center px-6 pb-2 z-10 border-t border-gray-100">
+        <button class="nav-item active flex flex-col items-center gap-1" data-target="view-home">
+            <i class="ph-fill ph-map-trifold text-2xl"></i>
+            <span class="text-[10px] font-bold">地图</span>
+        </button>
+        <button class="nav-item flex flex-col items-center gap-1 text-gray-400" data-target="view-petroom">
+            <i class="ph-fill ph-house text-2xl relative">
+                <span id="pet-room-badge" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#9bdeac] rounded-full hidden"></span>
+                <span id="diary-badge" class="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span>
+            </i>
+            <span class="text-[10px] font-bold">宠物</span>
+        </button>
+    </nav>
+
+    <!-- 通用放大查看弹层：用于橱柜 / 日记 -->
+    <div id="modal-overlay" class="absolute inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+        <div id="modal-panel" class="bg-[#fffaf0] rounded-3xl w-[90%] max-h-[75%] p-4 flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h2 id="modal-title" class="text-sm font-bold text-gray-800"></h2>
+                <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none" data-modal-close aria-label="关闭">&times;</button>
+            </div>
+            <div id="modal-body" class="flex-1 overflow-y-auto no-scrollbar space-y-3 text-xs"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 状态管理 ---
+    const appState = {
+        locations: [],
+        cabinetItems: [],
+        petPersonality: '活泼',
+        petAvatars: { '活泼': '🐰', '贪吃': '🐻', '文艺': '🐱' },
+        currentActionInterval: null
+    };
+
+    // --- OpenRouter AIGC 配置（通过 /api/chat 代理，Key 在服务端环境变量中） ---
+    const AIGC_API_ENDPOINT = '/api/chat';
+    const OPENROUTER_MODEL_ID = 'google/gemini-2.0-flash-001';
+
+    let isCheckinInProgress = false;
+    let ignoreNextPetClick = false;
+
+    // --- DOM 元素引用 ---
+    const views = document.querySelectorAll('.page-view');
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    const locationInput = document.getElementById('location-input');
+    const btnCheckin = document.getElementById('btn-checkin');
+    const mapPinsContainer = document.getElementById('map-pins-container');
+    
+    const petPersonalitySelect = document.getElementById('pet-personality');
+    const personalityPills = document.querySelectorAll('.personality-pill');
+    const petAvatarRoom = document.getElementById('pet-avatar-room');
+    const petAvatarSprite = document.getElementById('pet-avatar-sprite');
+    const petActionBubble = document.getElementById('pet-action-bubble');
+    const petActionBubbleTail = document.querySelector('.bubble-tail');
+    const petStatusBar = document.getElementById('pet-status-bar');
+    const btnPetTouch = document.getElementById('btn-pet-touch');
+    const btnPetGreet = document.getElementById('btn-pet-greet');
+    const btnPetRestToggle = document.getElementById('btn-pet-rest-toggle');
+    const actionRest = document.getElementById('action-rest');
+    const actionCabinet = document.getElementById('action-cabinet');
+    const actionDiary = document.getElementById('action-diary');
+    const actionCabinetBadge = document.getElementById('action-cabinet-badge');
+    const actionDiaryBadge = document.getElementById('action-diary-badge');
+    const roomHint = document.getElementById('room-hint');
+    
+    const diaryList = document.getElementById('diary-list');
+    const cabinetGrid = document.getElementById('cabinet-grid');
+    const diaryBadge = document.getElementById('diary-badge');
+    const petRoomBadge = document.getElementById('pet-room-badge');
+    const scenePreview = document.getElementById('scene-preview');
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalPanel = document.getElementById('modal-panel');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalClose = document.getElementById('modal-close');
+    const hotspotCabinet = document.getElementById('hotspot-cabinet');
+    const hotspotDiary = document.getElementById('hotspot-diary');
+    const hotspotBed = document.getElementById('hotspot-bed');
+    const hotspotPot = document.getElementById('hotspot-pot');
+    const hotspotDoor = document.getElementById('hotspot-door');
+    const hotspotPlant = document.getElementById('hotspot-plant');
+
+    const roomViewport = document.getElementById('room-viewport');
+    const roomScene = document.getElementById('room-scene');
+
+    const defaultPetPosition = {
+        bottom: '25%',
+        left: '50%'
+    };
+
+    // --- 房间场景拖拽与缩放 ---
+    (function initRoomPanZoom() {
+        if (!roomViewport || !roomScene) return;
+        let sceneTranslateX = 0, sceneTranslateY = 0, sceneScale = 1;
+        let lastPointerX = 0, lastPointerY = 0;
+        let isPanning = false;
+        let lastPinchDist = 0, lastPinchCenterX = 0, lastPinchCenterY = 0;
+        const MIN_SCALE = 0.6, MAX_SCALE = 3;
+
+        function applySceneTransform() {
+            roomScene.style.transform = `translate(${sceneTranslateX}px, ${sceneTranslateY}px) scale(${sceneScale})`;
+        }
+
+        function isInteractiveTarget(el) {
+            if (!el || !el.closest) return false;
+            return el.closest('.room-hotspot');
+        }
+
+        function isOnPet(el) {
+            return el && el.closest && el.closest('#pet-avatar-room');
+        }
+
+        const TAP_THRESHOLD_PX = 5;
+        let pointerDownOnPet = false;
+        let didPanThisGesture = false;
+        let startPointerX = 0, startPointerY = 0;
+
+        roomViewport.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 && e.button !== undefined) return;
+            if (isInteractiveTarget(e.target)) return;
+            pointerDownOnPet = isOnPet(e.target);
+            didPanThisGesture = false;
+            startPointerX = e.clientX;
+            startPointerY = e.clientY;
+            isPanning = true;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            try { roomViewport.setPointerCapture(e.pointerId); } catch (_) {}
+            e.preventDefault();
+        });
+
+        roomViewport.addEventListener('pointermove', (e) => {
+            if (!isPanning) return;
+            const dx = e.clientX - lastPointerX;
+            const dy = e.clientY - lastPointerY;
+            if (!didPanThisGesture && (Math.abs(e.clientX - startPointerX) > TAP_THRESHOLD_PX || Math.abs(e.clientY - startPointerY) > TAP_THRESHOLD_PX)) {
+                didPanThisGesture = true;
+            }
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            sceneTranslateX += dx;
+            sceneTranslateY += dy;
+            applySceneTransform();
+            e.preventDefault();
+        });
+
+        roomViewport.addEventListener('pointerup', () => {
+            if (pointerDownOnPet && !didPanThisGesture && typeof window.__triggerPetTapInteraction === 'function') {
+                ignoreNextPetClick = true;
+                window.__triggerPetTapInteraction();
+            }
+            isPanning = false;
+        });
+        roomViewport.addEventListener('pointercancel', () => { isPanning = false; });
+        roomViewport.addEventListener('pointerleave', () => { isPanning = false; });
+
+        roomViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.08 : 0.08;
+            const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, sceneScale + delta));
+            if (newScale === sceneScale) return;
+            sceneScale = newScale;
+            applySceneTransform();
+        }, { passive: false });
+
+        roomViewport.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                lastPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                lastPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            }
+        }, { passive: true });
+
+        roomViewport.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const scaleFactor = dist / lastPinchDist;
+                const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, sceneScale * scaleFactor));
+                sceneScale = newScale;
+                sceneTranslateX += centerX - lastPinchCenterX;
+                sceneTranslateY += centerY - lastPinchCenterY;
+                lastPinchDist = dist;
+                lastPinchCenterX = centerX;
+                lastPinchCenterY = centerY;
+                applySceneTransform();
+            }
+        }, { passive: false });
+
+        applySceneTransform();
+    })();
+
+    // --- 比卡丘宠物生命状态机 ---
+    const PET_STATES = {
+        IDLE_WAIT: 'idle_wait',        // 入场 / 被叫醒后的短暂等待
+        IDLE_BREATH: 'idle_breath',    // 正常呼吸发呆
+        IDLE_OBSERVE: 'idle_observe',  // 好奇观察
+        INTERACT: 'interact',          // 与用户互动
+        REST: 'rest'                   // 休息/睡觉
+    };
+
+    const petLife = {
+        current: PET_STATES.IDLE_WAIT,
+        previous: PET_STATES.IDLE_BREATH,
+        transientTimer: null,
+        inactivityTimer: null
+    };
+
+    function updatePetStatus(text) {
+        if (!petStatusBar) return;
+        petStatusBar.textContent = text;
+    }
+
+    function clearPetTimers() {
+        if (petLife.transientTimer) {
+            clearTimeout(petLife.transientTimer);
+            petLife.transientTimer = null;
+        }
+        if (petLife.inactivityTimer) {
+            clearTimeout(petLife.inactivityTimer);
+            petLife.inactivityTimer = null;
+        }
+    }
+
+    function schedulePetTransition(targetState, delayMs) {
+        if (!delayMs || !targetState) return;
+        if (petLife.transientTimer) {
+            clearTimeout(petLife.transientTimer);
+        }
+        petLife.transientTimer = setTimeout(() => {
+            setPetState(targetState, { skipInactivityReset: true });
+        }, delayMs);
+    }
+
+    function scheduleInactivityFlow() {
+        // 15 秒无交互：从呼吸 -> 观察；再 15 秒：观察 -> 休息
+        if (petLife.inactivityTimer) {
+            clearTimeout(petLife.inactivityTimer);
+        }
+        petLife.inactivityTimer = setTimeout(() => {
+            if (petLife.current === PET_STATES.REST) return;
+            if (petLife.current === PET_STATES.IDLE_BREATH) {
+                setPetState(PET_STATES.IDLE_OBSERVE, { skipInactivityReset: true });
+                petLife.inactivityTimer = setTimeout(() => {
+                    if (petLife.current !== PET_STATES.REST) {
+                        setPetState(PET_STATES.REST, { skipInactivityReset: true });
+                    }
+                }, 15000);
+            } else if (petLife.current === PET_STATES.IDLE_OBSERVE) {
+                setPetState(PET_STATES.REST, { skipInactivityReset: true });
+            }
+        }, 15000);
+    }
+
+    function setPetState(nextState, options = {}) {
+        if (!nextState) return;
+        const prev = petLife.current;
+        petLife.previous = prev;
+        petLife.current = nextState;
+
+        if (!options.keepOtherTimers) {
+            clearPetTimers();
+        }
+
+        switch (nextState) {
+            case PET_STATES.IDLE_WAIT:
+                updatePetStatus('比卡丘正在伸懒腰准备出发…');
+                playPetAnimation('idle_wait', { loop: false, frameInterval: 120, cycles: 2 });
+                schedulePetTransition(PET_STATES.IDLE_BREATH, 2800);
+                break;
+            case PET_STATES.IDLE_BREATH:
+                updatePetStatus('比卡丘在安静地呼吸放空中');
+                playPetAnimation('idle_breath', { loop: true, frameInterval: 130 });
+                break;
+            case PET_STATES.IDLE_OBSERVE:
+                updatePetStatus('比卡丘好奇地盯着你看');
+                playPetAnimation('idle_observe', { loop: false, frameInterval: 120, cycles: 2 });
+                schedulePetTransition(PET_STATES.IDLE_BREATH, 4000);
+                break;
+            case PET_STATES.INTERACT:
+                updatePetStatus('比卡丘正开心地和你互动');
+                playPetAnimation('interact', { loop: false, frameInterval: 90, cycles: 2 });
+                schedulePetTransition(PET_STATES.IDLE_BREATH, 3200);
+                break;
+            case PET_STATES.REST:
+                updatePetStatus('比卡丘蜷成一团睡着了…');
+                playPetAnimation('rest', { loop: true, frameInterval: 150 });
+                break;
+            default:
+                playPetAnimation('idle_breath', { loop: true, frameInterval: 130 });
+        }
+
+        if (!options.skipInactivityReset && nextState !== PET_STATES.REST) {
+            scheduleInactivityFlow();
+        }
+
+        if (btnPetRestToggle) {
+            if (petLife.current === PET_STATES.REST) {
+                btnPetRestToggle.textContent = '叫醒它';
+            } else {
+                btnPetRestToggle.textContent = '去休息';
+            }
+        }
+        if (actionRest) {
+            if (petLife.current === PET_STATES.REST) {
+                actionRest.querySelector('span:last-child').textContent = '叫醒它';
+            } else {
+                actionRest.querySelector('span:last-child').textContent = '休息';
+            }
+        }
+    }
+
+    function markPetInteraction() {
+        // 用户主动交互会重置无操作计时
+        if (petLife.current === PET_STATES.REST) {
+            setPetState(PET_STATES.IDLE_WAIT);
+        } else {
+            scheduleInactivityFlow();
+        }
+    }
+
+    // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款随机 ---
+    // 中国地点（key 按具体优先，先匹配广州再匹配广东）
+    const sceneAssets = {
+        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦' },
+        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
+        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
+        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔' },
+        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃' },
+        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
+        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
+        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' },
+        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' }
+    };
+    const sceneAssetsKeyOrder = ['北京', '广州', '广东', '上海', '深圳', '成都', '四川', '杭州', '浙江'];
+
+    const hiddenSceneAssets = [
+        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔' },
+        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔' },
+        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像' }
+    ];
+
+    function getSceneAsset(location) {
+        const normalized = typeof normalizeLocationName === 'function' ? normalizeLocationName(location) : String(location || '').trim();
+        for (let i = 0; i < sceneAssetsKeyOrder.length; i++) {
+            const key = sceneAssetsKeyOrder[i];
+            if (normalized.includes(key) || (location && String(location).includes(key))) {
+                return sceneAssets[key];
+            }
+        }
+        if (typeof isChinaLocation === 'function' && !isChinaLocation(location)) {
+            if (hiddenSceneAssets.length > 0) {
+                return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+            }
+        }
+        return null;
+    }
+
+    // --- 性格选择：胶囊选项 ---
+    function setPersonalityPillActive(value) {
+        personalityPills.forEach((pill) => {
+            if (pill.getAttribute('data-value') === value) {
+                pill.classList.add('active');
+            } else {
+                pill.classList.remove('active');
+            }
+        });
+    }
+    setPersonalityPillActive(appState.petPersonality);
+
+    personalityPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const value = pill.getAttribute('data-value');
+            if (!value) return;
+            appState.petPersonality = value;
+            if (petPersonalitySelect) {
+                petPersonalitySelect.value = value;
+                petPersonalitySelect.dispatchEvent(new Event('change'));
+            }
+            setPersonalityPillActive(value);
+        });
+    });
+
+    // --- 房间内宠物移动与热点动效 ---
+    function movePetToSpot(position, contextOverride, stayMs = 2600, animationState = null) {
+        if (!petAvatarRoom) return;
+
+        if (position && typeof position.bottom === 'string' && typeof position.left === 'string') {
+            petAvatarRoom.style.bottom = position.bottom;
+            petAvatarRoom.style.left = position.left;
+        }
+
+        if (contextOverride) {
+            triggerAIPetAction(contextOverride);
+        } else {
+            triggerAIPetAction();
+        }
+
+        if (animationState) {
+            playPetAnimation(animationState, { loop: false, frameInterval: 220 });
+        }
+
+        // 到达目标时播放跳跃落地动效
+        petAvatarRoom.classList.remove('pet-anim-jump');
+        void petAvatarRoom.offsetWidth;
+        petAvatarRoom.classList.add('pet-anim-jump');
+        setTimeout(() => petAvatarRoom.classList.remove('pet-anim-jump'), 450);
+
+        if (stayMs > 0) {
+            setTimeout(() => {
+                petAvatarRoom.style.bottom = defaultPetPosition.bottom;
+                petAvatarRoom.style.left = defaultPetPosition.left;
+            }, stayMs);
+        }
+    }
+
+    function wiggleHotspot(buttonEl) {
+        if (!buttonEl) return;
+        const visual = buttonEl.querySelector('.room-hotspot-button') || buttonEl;
+        visual.classList.remove('room-hotspot-wiggle');
+        // 读 offsetWidth 以重新触发 CSS 动画
+        void visual.offsetWidth;
+        visual.classList.add('room-hotspot-wiggle');
+    }
+
+    // --- 弹层：通用放大查看 ---
+    function openModal(title, contentHTML, variant = 'default') {
+        if (!modalOverlay || !modalTitle || !modalBody || !modalPanel) return;
+        modalTitle.textContent = title;
+        modalBody.innerHTML = contentHTML;
+
+        if (variant === 'diary') {
+            modalPanel.className = 'bg-[#fffaf0] rounded-3xl w-[94%] h-[82%] p-4 flex flex-col shadow-2xl';
+        } else if (variant === 'cabinet') {
+            modalPanel.className = 'cabinet-modal rounded-3xl w-[90%] max-h-[75%] p-4 flex flex-col shadow-2xl';
+        } else {
+            modalPanel.className = 'bg-[#fffaf0] rounded-3xl w-[90%] max-h-[75%] p-4 flex flex-col shadow-2xl';
+        }
+
+        modalOverlay.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        if (!modalOverlay) return;
+        modalOverlay.classList.add('hidden');
+        if (modalBody) modalBody.innerHTML = '';
+    }
+
+    function openCabinetModal() {
+        if (!cabinetGrid) return;
+        const count = (appState.cabinetItems && appState.cabinetItems.length) || cabinetGrid.querySelectorAll('[data-cabinet-item]').length;
+        const emptyHint = count === 0 ? '<p class="text-center text-[11px] text-gray-500 py-2">带我去打卡，解锁第一件纪念品吧~</p>' : '';
+        const bodyHTML = `
+            <div class="cabinet-modal-content space-y-3 text-xs">
+                <div class="flex items-baseline justify-between text-[11px]" style="color:#5c4a3a">
+                    <span class="font-bold">我的旅行橱柜</span>
+                    <span>已收集 <span class="font-semibold" style="color:#b85c6f">${count}</span> 件小物件</span>
+                </div>
+                ${emptyHint}
+                <div class="cabinet-shelf grid grid-cols-4 gap-2">
+                    ${cabinetGrid.innerHTML}
+                </div>
+                <p class="text-[10px] text-right" style="color:#6b5b4f">打卡越多，橱柜越满哦~</p>
+            </div>
+        `;
+        openModal('旅行橱柜', bodyHTML, 'cabinet');
+    }
+
+    function openDiaryModal() {
+        if (!diaryList) return;
+        const hasUserDiaries = (appState.locations && appState.locations.length) > 0;
+        const diaryHint = !hasUserDiaries ? '<p class="text-center text-[11px] text-gray-500 py-2">带我去打卡，解锁第一篇旅行日记吧~</p>' : '';
+        const bodyHTML = `
+            <div class="flex flex-col gap-3 text-xs">
+                <div class="text-[11px] text-gray-500">最新打卡会出现在最上方</div>
+                ${diaryHint}
+                <div class="flex flex-col gap-3">
+                    ${diaryList.innerHTML}
+                </div>
+            </div>
+        `;
+        openModal('旅行日记', bodyHTML, 'diary');
+    }
+
+    function enterPetRoom() {
+        triggerAIPetAction();
+        setPetState(PET_STATES.IDLE_WAIT);
+
+        const petViewEl = document.getElementById('view-petroom');
+        if (petViewEl) {
+            petViewEl.classList.add('entrance');
+            setTimeout(() => petViewEl.classList.remove('entrance'), 450);
+        }
+
+        if (roomHint && !sessionStorage.getItem('petroom-hint-seen')) {
+            roomHint.style.opacity = '1';
+            setTimeout(() => {
+                roomHint.style.opacity = '0';
+                sessionStorage.setItem('petroom-hint-seen', '1');
+            }, 3000);
+        } else if (roomHint) {
+            roomHint.style.opacity = '0';
+        }
+    }
+
+    function leavePetRoom() {
+        // 离开宠物 Tab 时，暂停计时器，避免后台乱跳状态
+        clearPetTimers();
+        clearInterval(appState.currentActionInterval);
+    }
+
+    // --- 导航切换逻辑 ---
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            navItems.forEach(nav => {
+                nav.classList.remove('active');
+                nav.classList.add('text-gray-400');
+            });
+            item.classList.add('active');
+            item.classList.remove('text-gray-400');
+            
+            const targetId = item.getAttribute('data-target');
+            views.forEach(view => view.classList.remove('active'));
+            const targetView = document.getElementById(targetId);
+            if (targetView) targetView.classList.add('active');
+
+            if (targetId === 'view-petroom') {
+                diaryBadge.classList.add('hidden');
+                petRoomBadge.classList.add('hidden');
+                if (actionDiaryBadge) actionDiaryBadge.classList.add('hidden');
+                if (actionCabinetBadge) actionCabinetBadge.classList.add('hidden');
+                enterPetRoom();
+            } else {
+                leavePetRoom();
+            }
+            if (targetView && targetView.scrollTop !== undefined) targetView.scrollTop = 0;
+        });
+    });
+
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay || event.target.hasAttribute('data-modal-close')) {
+                closeModal();
+            }
+        });
+    }
+
+    if (hotspotCabinet) {
+        hotspotCabinet.addEventListener('click', (event) => {
+            event.stopPropagation();
+            openCabinetModal();
+        });
+    }
+
+    if (hotspotDiary) {
+        hotspotDiary.addEventListener('click', (event) => {
+            event.stopPropagation();
+            openDiaryModal();
+        });
+    }
+
+    if (actionCabinet) {
+        actionCabinet.addEventListener('click', () => openCabinetModal());
+    }
+    if (actionDiary) {
+        actionDiary.addEventListener('click', () => openDiaryModal());
+    }
+    if (actionRest) {
+        actionRest.addEventListener('click', () => {
+            if (petLife.current === PET_STATES.REST) {
+                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
+                setPetState(PET_STATES.IDLE_WAIT);
+            } else {
+                triggerAIPetAction('决定先小睡一会儿，恢复体力');
+                setPetState(PET_STATES.REST);
+            }
+        });
+    }
+
+    // 房间热点：床 / 锅 / 门 / 植物
+    if (hotspotBed) {
+        hotspotBed.addEventListener('click', (event) => {
+            event.stopPropagation();
+            wiggleHotspot(hotspotBed);
+            markPetInteraction();
+            movePetToSpot(
+                { bottom: '32%', left: '50%' },
+                '在软软的床上伸了个大大的懒腰',
+                2600,
+                'rest'
+            );
+            setPetState(PET_STATES.REST);
+        });
+    }
+
+    if (hotspotPot) {
+        hotspotPot.addEventListener('click', (event) => {
+            event.stopPropagation();
+            wiggleHotspot(hotspotPot);
+            markPetInteraction();
+            movePetToSpot(
+                { bottom: '26%', left: '30%' },
+                '跑到锅边偷偷闻了一大口香味',
+                2600,
+                'eat'
+            );
+            setPetState(PET_STATES.INTERACT);
+        });
+    }
+
+    if (hotspotDoor) {
+        hotspotDoor.addEventListener('click', (event) => {
+            event.stopPropagation();
+            wiggleHotspot(hotspotDoor);
+            markPetInteraction();
+            movePetToSpot(
+                { bottom: '30%', left: '70%' },
+                '跑到门口，准备和主人一起出门探索',
+                800,
+                'door'
+            );
+            setPetState(PET_STATES.INTERACT);
+
+            setTimeout(() => {
+                const homeNav = Array.from(navItems).find(
+                    (item) => item.getAttribute('data-target') === 'view-home'
+                );
+                if (homeNav) {
+                    homeNav.click();
+                }
+            }, 350);
+        });
+    }
+
+    if (hotspotPlant) {
+        hotspotPlant.addEventListener('click', (event) => {
+            event.stopPropagation();
+            wiggleHotspot(hotspotPlant);
+            markPetInteraction();
+            triggerAIPetAction('靠在绿植旁边安静地呼吸新鲜空气');
+            playPetAnimation('plant', { loop: false, frameInterval: 220, cycles: 3 });
+            setPetState(PET_STATES.IDLE_BREATH);
+        });
+    }
+
+    // --- 宠物性格切换 ---
+    petPersonalitySelect.addEventListener('change', (e) => {
+        appState.petPersonality = e.target.value;
+
+        // 动画反馈
+        if (petAvatarRoom) {
+            petAvatarRoom.style.transform = 'translate(-50%, 0) scale(1.2) rotate(10deg)';
+            setTimeout(() => { petAvatarRoom.style.transform = 'translateX(-50%)'; }, 300);
+        }
+        
+        markPetInteraction();
+        triggerAIPetAction(); // 切换性格立刻生成新状态
+        setPetState(PET_STATES.INTERACT);
+    });
+
+    // --- 比卡丘宠物按钮交互 ---
+    if (btnPetTouch) {
+        btnPetTouch.addEventListener('click', () => {
+            markPetInteraction();
+            triggerAIPetAction('主人轻轻摸了摸我的头');
+            setPetState(PET_STATES.INTERACT);
+        });
+    }
+
+    if (btnPetGreet) {
+        btnPetGreet.addEventListener('click', () => {
+            markPetInteraction();
+            triggerAIPetAction('主人对我挥手打了个招呼');
+            setPetState(PET_STATES.IDLE_OBSERVE);
+        });
+    }
+
+    if (btnPetRestToggle) {
+        btnPetRestToggle.addEventListener('click', () => {
+            if (petLife.current === PET_STATES.REST) {
+                // 从休息中被叫醒
+                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
+                setPetState(PET_STATES.IDLE_WAIT);
+            } else {
+                triggerAIPetAction('决定先小睡一会儿，恢复体力');
+                setPetState(PET_STATES.REST);
+            }
+        });
+    }
+
+    // --- 核心：打卡联动 ---
+    btnCheckin.addEventListener('click', async () => {
+        if (isCheckinInProgress) return;
+
+        const location = locationInput.value.trim();
+        if (!location) return;
+
+        isCheckinInProgress = true;
+
+        appState.locations.push(location);
+        
+        // 1. 在地图上随机位置生成打卡图钉
+        addMapPin(location);
+
+        const originalText = btnCheckin.innerText;
+        btnCheckin.disabled = true;
+        btnCheckin.innerText = '写日记中…';
+        
+        let diaryText = '';
+        let usedFallback = false;
+
+        console.log('[Diary AIGC] 正在通过 /api/chat 请求生成日记…');
+        const result = await generateDiaryWithAIGC(location, appState.petPersonality);
+        if (result && result.ok && result.content) {
+            diaryText = result.content;
+        } else {
+            usedFallback = true;
+            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。原因:', result && result.error ? result.error : '返回内容为空');
+        }
+
+        if (!diaryText) {
+            diaryText = buildDiaryText(location, appState.petPersonality);
+        }
+
+        const scene = getSceneAsset(location);
+
+        // 2. 生成日记
+        generateDiaryEntry(location, diaryText, scene);
+
+        // 3. 改变宠物房间状态与橱柜
+        triggerAIPetAction(`刚才去了${location}`);
+        setPetState(PET_STATES.INTERACT);
+        petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
+        if (actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+        diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
+        if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+        addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
+        showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
+        playExcitedAnimation();                 // 宠物播放一次兴奋动画
+
+        if (usedFallback) {
+            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。');
+        }
+        
+        // 按钮视觉反馈
+        locationInput.value = '';
+        btnCheckin.innerText = '打卡成功!';
+        btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
+        setTimeout(() => {
+            btnCheckin.innerText = originalText || '去打卡';
+            btnCheckin.classList.replace('bg-[#9bdeac]', 'bg-[#ff8fab]');
+            btnCheckin.disabled = false;
+            isCheckinInProgress = false;
+        }, 1500);
+    });
+
+    // --- 地点标准化与中国地图坐标映射 ---
+    function normalizeLocationName(raw) {
+        if (!raw) return '';
+        let text = String(raw)
+            .trim()
+            .replace(/[\s\u3000]+/g, ''); // 去掉半角/全角空格
+
+        const aliasMap = {
+            '北京市': '北京',
+            '天津市': '天津',
+            '上海市': '上海',
+            '重庆市': '重庆',
+            '内蒙': '内蒙古',
+            '内蒙古自治区': '内蒙古',
+            '广西壮族自治区': '广西',
+            '宁夏回族自治区': '宁夏',
+            '新疆维吾尔自治区': '新疆',
+            '西藏自治区': '西藏',
+            '香港特别行政区': '香港',
+            '澳门特别行政区': '澳门'
+        };
+
+        if (aliasMap[text]) return aliasMap[text];
+
+        text = text
+            .replace(/省$/g, '')
+            .replace(/市$/g, '')
+            .replace(/特别行政区$/g, '')
+            .replace(/壮族自治区$/g, '')
+            .replace(/回族自治区$/g, '')
+            .replace(/维吾尔自治区$/g, '')
+            .replace(/自治区$/g, '');
+
+        if (aliasMap[text]) return aliasMap[text];
+        return text;
+    }
+
+    // 省级行政区 + 若干热门城市在当前卡通地图上的大致坐标（基于容器百分比）
+    const locationMap = {
+        // 直辖市 / 华北
+        '北京':   { top: '28%', left: '62%' },
+        '天津':   { top: '30%', left: '66%' },
+        '河北':   { top: '32%', left: '59%' },
+        '山西':   { top: '34%', left: '54%' },
+        '内蒙古': { top: '26%', left: '50%' },
+
+        // 东北
+        '辽宁':   { top: '26%', left: '69%' },
+        '吉林':   { top: '23%', left: '74%' },
+        '黑龙江': { top: '19%', left: '78%' },
+
+        // 华东
+        '上海':   { top: '46%', left: '74%' },
+        '江苏':   { top: '42%', left: '70%' },
+        '浙江':   { top: '50%', left: '71%' },
+        '山东':   { top: '38%', left: '67%' },
+        '安徽':   { top: '46%', left: '63%' },
+        '江西':   { top: '56%', left: '60%' },
+        '福建':   { top: '58%', left: '66%' },
+
+        // 华中
+        '河南':   { top: '42%', left: '58%' },
+        '湖北':   { top: '48%', left: '55%' },
+        '湖南':   { top: '54%', left: '55%' },
+
+        // 华南
+        '广东':   { top: '64%', left: '58%' },
+        '广西':   { top: '66%', left: '50%' },
+        '海南':   { top: '76%', left: '58%' },
+        '香港':   { top: '67%', left: '61%' },
+        '澳门':   { top: '68%', left: '58%' },
+        '台湾':   { top: '63%', left: '74%' },
+
+        // 西南
+        '重庆':   { top: '55%', left: '54%' },
+        '四川':   { top: '51%', left: '48%' },
+        '贵州':   { top: '58%', left: '50%' },
+        '云南':   { top: '63%', left: '45%' },
+        '西藏':   { top: '60%', left: '28%' },
+
+        // 西北
+        '陕西':   { top: '41%', left: '50%' },
+        '甘肃':   { top: '37%', left: '40%' },
+        '青海':   { top: '38%', left: '34%' },
+        '宁夏':   { top: '35%', left: '46%' },
+        '新疆':   { top: '27%', left: '24%' },
+
+        // 热门城市（在省份内大致位置）
+        '武汉':   { top: '48%', left: '56%' },
+        '南京':   { top: '44%', left: '71%' },
+        '杭州':   { top: '50%', left: '72%' },
+        '成都':   { top: '52%', left: '46%' },
+        '西安':   { top: '42%', left: '51%' },
+        '青岛':   { top: '36%', left: '69%' },
+        '厦门':   { top: '60%', left: '67%' },
+        '深圳':   { top: '66%', left: '59%' },
+        '广州':   { top: '65%', left: '58%' },
+        '苏州':   { top: '44%', left: '72%' },
+        '长沙':   { top: '54%', left: '56%' },
+        '郑州':   { top: '42%', left: '57%' },
+        '济南':   { top: '38%', left: '65%' },
+        '哈尔滨': { top: '20%', left: '78%' },
+        '沈阳':   { top: '26%', left: '70%' },
+        '昆明':   { top: '64%', left: '42%' },
+        '大理':   { top: '62%', left: '38%' },
+        '丽江':   { top: '60%', left: '36%' },
+        '洛阳':   { top: '42%', left: '55%' },
+        '桂林':   { top: '64%', left: '52%' },
+        '珠海':   { top: '67%', left: '58%' },
+        '大连':   { top: '24%', left: '72%' },
+        '宁波':   { top: '50%', left: '73%' },
+        '无锡':   { top: '44%', left: '71%' },
+        '合肥':   { top: '46%', left: '64%' },
+        '福州':   { top: '58%', left: '66%' },
+        '南昌':   { top: '56%', left: '61%' },
+        '石家庄': { top: '32%', left: '60%' },
+        '太原':   { top: '34%', left: '54%' },
+        '呼和浩特': { top: '28%', left: '48%' },
+        '乌鲁木齐': { top: '30%', left: '22%' },
+        '拉萨':   { top: '62%', left: '26%' },
+        '三亚':   { top: '78%', left: '56%' }
+    };
+
+    // 城市 → 省份（用于未在 locationMap 中的地名兜底，落在对应省份中心）
+    const cityToProvince = {
+        '宜昌': '湖北', '襄阳': '湖北', '荆州': '湖北', '黄冈': '湖北',
+        '徐州': '江苏', '南通': '江苏', '常州': '江苏', '扬州': '江苏', '镇江': '江苏', '无锡': '江苏',
+        '温州': '浙江', '绍兴': '浙江', '嘉兴': '浙江', '金华': '浙江', '台州': '浙江',
+        '烟台': '山东', '威海': '山东', '潍坊': '山东', '淄博': '山东', '临沂': '山东',
+        '唐山': '河北', '保定': '河北', '邯郸': '河北', '秦皇岛': '河北',
+        '佛山': '广东', '东莞': '广东', '汕头': '广东', '湛江': '广东', '中山': '广东', '惠州': '广东',
+        '泉州': '福建', '漳州': '福建', '福州': '福建', '莆田': '福建',
+        '柳州': '广西', '北海': '广西', '南宁': '广西',
+        '遵义': '贵州', '贵阳': '贵州', '六盘水': '贵州',
+        '绵阳': '四川', '乐山': '四川', '德阳': '四川', '宜宾': '四川', '南充': '四川',
+        '开封': '河南', '南阳': '河南', '安阳': '河南', '新乡': '河南', '商丘': '河南',
+        '岳阳': '湖南', '株洲': '湖南', '湘潭': '湖南', '衡阳': '湖南', '张家界': '湖南',
+        '赣州': '江西', '九江': '江西', '上饶': '江西',
+        '芜湖': '安徽', '蚌埠': '安徽', '安庆': '安徽', '黄山': '安徽',
+        '包头': '内蒙古', '鄂尔多斯': '内蒙古',
+        '大庆': '黑龙江', '齐齐哈尔': '黑龙江', '牡丹江': '黑龙江',
+        '吉林市': '吉林', '长春': '吉林',
+        '秦皇岛': '河北', '承德': '河北'
+    };
+
+    function isChinaLocation(location) {
+        const n = normalizeLocationName(location);
+        if (locationMap[n] || cityToProvince[n]) return true;
+        const allKeys = [...Object.keys(locationMap), ...Object.keys(cityToProvince)];
+        for (const k of allKeys) {
+            if (n.includes(k) || (k && n.indexOf(k) !== -1)) return true;
+        }
+        return false;
+    }
+
+    // --- 地图省份热点层：可点击省份，填入地点并打卡 ---
+    const mapHotspotsEl = document.getElementById('map-hotspots');
+    if (mapHotspotsEl) {
+        Object.entries(locationMap).forEach(([name, pos]) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'map-hotspot';
+            btn.setAttribute('aria-label', `在${name}打卡`);
+            btn.style.top = pos.top;
+            btn.style.left = pos.left;
+            btn.dataset.location = name;
+            btn.title = `点击在 ${name} 打卡`;
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!locationInput) return;
+                locationInput.value = name;
+                if (btnCheckin && !isCheckinInProgress) btnCheckin.click();
+            });
+            mapHotspotsEl.appendChild(btn);
+        });
+    }
+
+    // --- 辅助函数：添加地图图钉 ---
+    function addMapPin(location) {
+        const key = normalizeLocationName(location);
+        let mapping = locationMap[key];
+
+        if (!mapping && cityToProvince[key]) {
+            const province = cityToProvince[key];
+            mapping = locationMap[province];
+        }
+
+        let top;
+        let left;
+        if (mapping) {
+            top = mapping.top;
+            left = mapping.left;
+        } else {
+            // 在规定范围内随机生成坐标 (避开边缘) 作为兜底
+            const randomX = Math.floor(Math.random() * 60) + 20;
+            const randomY = Math.floor(Math.random() * 60) + 20;
+            left = `${randomX}%`;
+            top = `${randomY}%`;
+        }
+        
+        const pinHTML = `
+            <div class="absolute pin-drop flex flex-col items-center" style="top: ${top}; left: ${left};">
+                <div class="bg-white/90 text-xs font-bold px-2 py-0.5 rounded-full shadow-md text-[#ff8fab] mb-1 whitespace-nowrap border border-[#ff8fab]">
+                    ${location}
+                </div>
+                <div class="text-2xl drop-shadow-md">📍</div>
+            </div>
+        `;
+        mapPinsContainer.insertAdjacentHTML('beforeend', pinHTML);
+    }
+
+    // --- 辅助函数：AI模拟宠物互动状态生成 ---
+    function triggerAIPetAction(contextOverride = null) {
+        clearInterval(appState.currentActionInterval);
+
+        const showBubbleShort = (text) => {
+            if (petActionBubble) {
+                petActionBubble.innerHTML = text;
+                petActionBubble.style.opacity = '1';
+                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
+            }
+            setTimeout(() => {
+                if (petActionBubble) petActionBubble.style.opacity = '0';
+                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '0';
+            }, 2500);
+        };
+
+        const generateText = () => {
+            const personality = appState.petPersonality;
+            const hasTraveled = appState.locations.length > 0;
+            const lastLocation = hasTraveled ? appState.locations[appState.locations.length - 1] : '';
+
+            const aiTemplates = {
+                '活泼': [
+                    "正在房间里蹦蹦跳跳 🎵",
+                    "正在收拾背包，准备下一次出发！",
+                    hasTraveled ? `好想再去一次【${lastLocation}】玩啊！` : "好想出去玩啊！",
+                    hasTraveled ? `在看【${lastLocation}】拍的照片~ 📷` : "在做热身运动..."
+                ],
+                '贪吃': [
+                    "肚子咕咕叫了，想吃零食 🍔",
+                    "正在做梦，梦里全是好吃的 💤",
+                    hasTraveled ? `【${lastLocation}】有什么特产美食呢？🤤` : "在翻冰箱...",
+                    hasTraveled ? `回味着在【${lastLocation}】吃的大餐~` : "喝了一大口果汁 🧃"
+                ],
+                '文艺': [
+                    "安静地发呆，思考旅行的意义 🍃",
+                    "正在写随笔日记 ✍️",
+                    hasTraveled ? `【${lastLocation}】的风景真让我难忘。` : "在听舒缓的音乐 🎧",
+                    hasTraveled ? `在画一幅【${lastLocation}】的风景画 🎨` : "翻阅着地理杂志..."
+                ]
+            };
+
+            if (contextOverride) {
+                return `哇！${contextOverride}，太开心了！✨`;
+            }
+            const pool = aiTemplates[personality];
+            return pool ? pool[Math.floor(Math.random() * pool.length)] : '正在期待旅行... ✨';
+        };
+
+        showBubbleShort(generateText());
+    }
+
+    // --- 宠物序列帧动画：多状态管理 ---
+    function makeFrames(folder, prefix, count) {
+        const frames = [];
+        for (let i = 1; i <= count; i++) {
+            const index = i.toString().padStart(3, '0');
+            frames.push(`比卡丘动画导出/${folder}/${prefix}_${index}.png`);
+        }
+        return frames;
+    }
+
+    const petAnimationStates = {
+        idle_wait: makeFrames('等待', 'flog_dengdai', 6),
+        idle_breath: makeFrames('呼吸', 'frog_idle', 6),
+        idle_observe: makeFrames('观察', 'flog_guancha', 6),
+        interact: makeFrames('互动', 'flog_hudong', 6),
+        rest: makeFrames('休息', 'flog_xiuxi', 6),
+        eat: makeFrames('互动', 'flog_hudong', 6),
+        door: makeFrames('互动', 'flog_hudong', 6),
+        plant: makeFrames('呼吸', 'frog_idle', 6)
+    };
+
+    const petAnimation = {
+        currentState: 'idle_breath',
+        index: 0,
+        timer: null
+    };
+
+    function playPetAnimation(stateKey, options = {}) {
+        if (!petAvatarSprite) return;
+
+        const frames = petAnimationStates[stateKey] && petAnimationStates[stateKey].length
+            ? petAnimationStates[stateKey]
+            : petAnimationStates.idle_breath;
+
+        if (!frames || !frames.length) return;
+
+        const loop = options.loop !== undefined ? options.loop : stateKey === 'idle_breath';
+        const frameInterval = options.frameInterval || (stateKey === 'idle_breath' ? 800 : 200);
+        const maxCycles = options.cycles || 2;
+
+        // 切换图片帧
+        clearInterval(petAnimation.timer);
+        petAnimation.currentState = stateKey;
+        petAnimation.index = 0;
+        petAvatarSprite.src = frames[0];
+
+        let played = 0;
+        petAnimation.timer = setInterval(() => {
+            petAnimation.index = (petAnimation.index + 1) % frames.length;
+            petAvatarSprite.src = frames[petAnimation.index];
+
+            if (!loop) {
+                played++;
+                if (played >= frames.length * maxCycles) {
+                    clearInterval(petAnimation.timer);
+                    if (stateKey !== 'idle_breath') {
+                        playPetAnimation('idle_breath', { loop: true, frameInterval: 800 });
+                    }
+                }
+            }
+        }, frameInterval);
+
+        // 切换对应的身体动效 class
+        const stateClassMap = {
+            idle_wait: 'pet-anim-idle',
+            idle_breath: 'pet-anim-idle',
+            idle_observe: 'pet-anim-idle',
+            interact: 'pet-anim-excited',
+            rest: 'pet-anim-sleep',
+            eat: 'pet-anim-eat',
+            door: 'pet-anim-door',
+            plant: 'pet-anim-plant'
+        };
+
+        Object.values(stateClassMap).forEach(cls => {
+            petAvatarSprite.classList.remove(cls);
+        });
+        const cls = stateClassMap[stateKey] || stateClassMap.idle_breath;
+        if (cls) {
+            petAvatarSprite.classList.add(cls);
+        }
+    }
+
+    function startIdleAnimation() {
+        playPetAnimation('idle_breath', { loop: true, frameInterval: 800 });
+    }
+
+    function playExcitedAnimation() {
+        setPetState(PET_STATES.INTERACT);
+    }
+
+    // 初始不主动启动，比卡丘在首次进入宠物页时再激活
+    // 但如果默认页就是宠物页（例如后续改动），则立即启动一次
+    const petViewEl = document.getElementById('view-petroom');
+    if (petViewEl && petViewEl.classList.contains('active')) {
+        enterPetRoom();
+    }
+
+    window.__triggerPetTapInteraction = function() {
+        if (!petAvatarRoom) return;
+        petAvatarRoom.style.transform = 'translate(-50%, -10px) scale(1.1)';
+        setTimeout(() => { petAvatarRoom.style.transform = 'translateX(-50%)'; }, 200);
+        markPetInteraction();
+        triggerAIPetAction("主人摸了摸我的头");
+        setPetState(PET_STATES.INTERACT);
+    };
+    
+    // 点击宠物也能触发互动
+    if (petAvatarRoom) {
+        petAvatarRoom.addEventListener('click', () => {
+            if (ignoreNextPetClick) {
+                ignoreNextPetClick = false;
+                return;
+            }
+            window.__triggerPetTapInteraction();
+        });
+
+        // 悬停时短暂进入观察状态，离开后回到呼吸
+        petAvatarRoom.addEventListener('mouseenter', () => {
+            if (petLife.current === PET_STATES.REST) return;
+            markPetInteraction();
+            setPetState(PET_STATES.IDLE_OBSERVE);
+        });
+
+        petAvatarRoom.addEventListener('mouseleave', () => {
+            if (petLife.current === PET_STATES.IDLE_OBSERVE) {
+                setPetState(PET_STATES.IDLE_BREATH);
+            }
+        });
+    }
+
+    // --- 地点风格数据与日记文案生成 ---
+    const cityFlavorMap = {
+        // 直辖市 / 一线城市
+        '北京': {
+            highlights: ['故宫城墙边', '胡同口的小店前', '天安门广场旁', '后海的湖边', '长安街的灯光下'],
+            tone: '历史感'
+        },
+        '上海': {
+            highlights: ['外滩江边', '武康路的小马路上', '黄浦江的夜风里', '陆家嘴高楼之间', '梧桐树下的小咖啡馆'],
+            tone: '现代感'
+        },
+        '广州': {
+            highlights: ['早茶店的圆桌旁', '上下九的小巷里', '珠江边的夜色中', '老牌糖水铺门口'],
+            tone: '烟火气'
+        },
+        '深圳': {
+            highlights: ['海边散步道', '高楼之间的空中花园', '科技展馆门口', '城中村的小吃摊旁'],
+            tone: '年轻感'
+        },
+
+        // 重点旅游城市
+        '杭州': {
+            highlights: ['西湖边的长椅上', '断桥残雪旁', '龙井茶田的山坡上', '慢悠悠的小巷里'],
+            tone: '温柔'
+        },
+        '西安': {
+            highlights: ['古城墙城门下', '回民街的小吃摊前', '大雁塔广场边', '博物馆的展柜前'],
+            tone: '厚重'
+        },
+        '成都': {
+            highlights: ['火锅店门口', '大熊猫基地旁', '宽窄巷子的石板路上', '小酒馆的木椅上'],
+            tone: '悠闲'
+        },
+        '重庆': {
+            highlights: ['长江大桥边', '山城的台阶上', '轻轨从楼里穿过的地方', '夜色里的洪崖洞前'],
+            tone: '立体感'
+        },
+        '厦门': {
+            highlights: ['鼓浪屿的小路上', '沙滩边的贝壳旁', '咖啡馆的落地窗前', '海风吹来的栈道上'],
+            tone: '海风'
+        },
+        '昆明': {
+            highlights: ['滇池湖边', '鲜花市场里', '石林的奇石旁', '蓝天下的草地上'],
+            tone: '四季如春'
+        },
+        '桂林': {
+            highlights: ['漓江边的竹筏上', '山水倒影前', '田间小路上', '云雾缭绕的山脚下'],
+            tone: '山水'
+        },
+        '青岛': {
+            highlights: ['红瓦白墙的小坡道上', '栈桥尽头', '海风吹拂的礁石旁', '啤酒街的灯光下'],
+            tone: '海港'
+        },
+
+        // 省级概括（大致意象）
+        '广东': {
+            highlights: ['街边的烧腊铺前', '热气腾腾的早茶桌旁', '海风吹来的港口边', '夜里还亮着灯的骑楼下'],
+            tone: '热闹'
+        },
+        '广西': {
+            highlights: ['喀斯特山脚下', '田间小路上', '江边的竹筏上', '被晚霞染红的云层下'],
+            tone: '山水'
+        },
+        '海南': {
+            highlights: ['细软的沙滩上', '摇晃的椰子树下', '海浪拍岸的礁石旁', '黄昏的海边小路上'],
+            tone: '度假感'
+        },
+        '四川': {
+            highlights: ['热气翻滚的火锅店里', '雪山脚下', '藏寨的小木屋旁', '茶馆里的小方桌旁'],
+            tone: '辣与安逸'
+        },
+        '贵州': {
+            highlights: ['苗寨的吊脚楼前', '云雾缭绕的山谷里', '瀑布飞流直下的观景台上'],
+            tone: '秘境'
+        },
+        '云南': {
+            highlights: ['古城的石板路上', '花团锦簇的小院里', '蓝天白云下的草甸上', '雪山远眺的观景台边'],
+            tone: '彩云之南'
+        },
+        '湖北': {
+            highlights: ['长江大桥旁', '热干面摊位前', '黄鹤楼脚下', '湖畔的步道上'],
+            tone: '江城'
+        },
+        '湖南': {
+            highlights: ['小炒肉飘香的饭馆里', '山间云雾中', '古城城墙边', '夜宵摊的一盏小灯下'],
+            tone: '热辣'
+        },
+        '河南': {
+            highlights: ['古都城楼下', '少林寺山门前', '麦浪翻滚的田野边', '黄河岸边的风里'],
+            tone: '中原'
+        },
+        '山东': {
+            highlights: ['海边的礁石上', '泰山的登山路上', '大馒头香味飘来的厨房门口'],
+            tone: '厚实'
+        },
+        '江苏': {
+            highlights: ['小桥流水边', '江南古镇的石板路上', '梧桐夹道的马路上'],
+            tone: '温婉'
+        },
+        '浙江': {
+            highlights: ['茶田的梯田间', '江南小镇的河埠头旁', '被灯笼点亮的小巷里'],
+            tone: '细腻'
+        },
+        '江西': {
+            highlights: ['庐山云雾里', '村口的古树下', '徽派古建筑前'],
+            tone: '安静'
+        },
+        '福建': {
+            highlights: ['土楼的圆院里', '海边的礁石上', '被海风吹拂的城墙边'],
+            tone: '山海之间'
+        },
+        '陕西': {
+            highlights: ['兵马俑展厅前', '古城墙上骑行道上', '街头肉夹馍摊位旁'],
+            tone: '历史'
+        },
+        '甘肃': {
+            highlights: ['大漠的黄沙上', '星空下的营地旁', '驼队走过的脚印边'],
+            tone: '大西北'
+        },
+        '青海': {
+            highlights: ['高原湖泊边', '蓝天白云下', '牦牛悠闲吃草的草地上'],
+            tone: '纯净'
+        },
+        '宁夏': {
+            highlights: ['贺兰山脚下', '黄河岸边', '葡萄藤的长廊里'],
+            tone: '塞上江南'
+        },
+        '新疆': {
+            highlights: ['广阔的草原上', '雪山脚下', '瓜果飘香的巴扎里', '星河如瀑的夜空下'],
+            tone: '辽阔'
+        },
+        '西藏': {
+            highlights: ['经幡飘动的山口上', '布达拉宫脚下', '云海翻滚的山谷里'],
+            tone: '高原'
+        },
+        '台湾': {
+            highlights: ['夜市摊位前', '海岸公路旁', '小镇的坡道上'],
+            tone: '暖暖'
+        },
+        '香港': {
+            highlights: ['维港的夜景前', '缆车慢慢上升的山腰上', '街角茶餐厅门口'],
+            tone: '繁华'
+        },
+        '澳门': {
+            highlights: ['大三巴牌坊前', '石板路的小巷里', '灯光闪烁的海边'],
+            tone: '复古'
+        }
+    };
+
+    // --- 调用 OpenRouter 生成 AIGC 日记文案 ---
+    async function generateDiaryWithAIGC(location, personality) {
+        const normalized = normalizeLocationName(location);
+        const flavor = cityFlavorMap[normalized];
+        const visitIndex = appState.locations.length;
+        const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+
+        const flavorText = flavor
+            ? `\n- 当地氛围关键词：${flavor.tone}。\n- 你们可能会出现在：${flavor.highlights.slice(0, 3).join('、')}。`
+            : '';
+        const progressText = visitIndex > 1
+            ? `这是我们第 ${visitIndex} 次旅行打卡。`
+            : '这是我们的第一次真正出发。';
+
+        const prompt = [
+            '你是一只电子宠物玩偶，用第一人称为主人写一段旅行日记。',
+            `- 我的性格：${personality}（请在语气和用词上自然体现这种性格特点）。`,
+            `- 我们正在：${location}。${flavorText}`,
+            `- 今天的日期：${date}。${progressText}`,
+            '要求：80～200 字，治愈、轻松，有画面感；不要虚构主人没有输入的地点或任何隐私信息。',
+            '只输出日记正文，不要标题或额外解释。'
+        ].join('\n');
+
+        const body = {
+            model: OPENROUTER_MODEL_ID,
+            messages: [
+                {
+                    role: 'system',
+                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”给主人写旅行日记。语言轻松、有画面感，避免负面情绪和不当内容。'
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ]
+        };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        try {
+            const response = await fetch(AIGC_API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                return { ok: false, error: `http_${response.status}` };
+            }
+
+            const data = await response.json();
+            const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+
+            if (!content || typeof content !== 'string') {
+                return { ok: false, error: 'empty_content' };
+            }
+
+            return { ok: true, content: content.trim() };
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return { ok: false, error: 'timeout' };
+            }
+            console.error('[Diary AIGC] OpenRouter 请求异常:', error.message || error);
+            return { ok: false, error: 'network' };
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    function buildDiaryText(location, personality) {
+        const normalized = normalizeLocationName(location);
+        const flavor = cityFlavorMap[normalized];
+        const visitIndex = appState.locations.length;
+        const progressText = visitIndex > 1 ? `这是我们的第${visitIndex}次旅行打卡。` : '这是我们的第一次真正出发。';
+
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const spots = (flavor && flavor.highlights) || [];
+        const h1 = spots.length ? pick(spots) : '';
+        const h2 = spots.length > 1 ? pick(spots.filter((s) => s !== h1)) : '';
+
+        // 根据性格 + 城市风格组合生成文案
+        if (personality === '活泼') {
+            if (flavor) {
+                return `耶！今天我们解锁了【${location}】！在${h1}${h2 ? `，又一路蹦蹦跳跳跑到${h2}` : ''}，笑声差点把相机都晃糊了。${progressText}`;
+            }
+            return `耶！今天我们来到了【${location}】！一路小跑着到处张望，感觉整座城市都在向我们打招呼。${progressText}`;
+        }
+
+        if (personality === '贪吃') {
+            if (flavor) {
+                return `终于到【${location}】了！鼻子在${h1}${h2 ? `和${h2}` : ''}之间来回巡逻，生怕错过一口好吃的。${progressText}`;
+            }
+            return `终于抵达【${location}】！比起风景，我更专注街边飘来的味道，准备把这里的美食记到专属清单里。${progressText}`;
+        }
+
+        // 文艺性格
+        if (flavor) {
+            return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把今天的光影都写进小小的旅行日记。${progressText}`;
+        }
+        return `风吹过【${location}】的街道，我慢慢走、慢慢看，把每一次心跳都折成书签，夹在记忆的这一页。${progressText}`;
+    }
+
+    // --- 辅助函数：生成日记 ---
+    function generateDiaryEntry(location, content, sceneOverride) {
+        const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+        const personality = appState.petPersonality;
+        const avatar = appState.petAvatars[personality];
+        const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        
+        const text = content && typeof content === 'string' && content.trim()
+            ? content.trim()
+            : buildDiaryText(location, personality);
+
+        const sceneImageBlock = scene ? `
+            <img src="${scene.image}" alt="${scene.label}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm mb-2">
+        ` : '';
+
+        const diaryHTML = `
+            <div class="glass-card rounded-2xl p-4 transform transition-all hover:scale-[1.01] shadow-sm animate-[fadeIn_0.5s_ease-out]">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-white bg-[#cdb4db] px-2 py-1 rounded-md">${date}</span>
+                    <span class="text-xs text-gray-500 font-bold"><i class="ph-fill ph-map-pin text-[#ff8fab]"></i> ${location}</span>
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex flex-col items-center">
+                        ${sceneImageBlock}
+                        <div class="text-3xl bg-white rounded-xl p-2 h-fit shadow-inner">${avatar}</div>
+                    </div>
+                    <p class="text-gray-700 text-sm leading-relaxed">${text}</p>
+                </div>
+            </div>
+        `;
+        diaryList.insertAdjacentHTML('afterbegin', diaryHTML);
+        diaryBadge.classList.remove('hidden'); // 显示日记未读红点
+        if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+    }
+
+    // --- 辅助函数：在橱柜中新增纪念品 ---
+    const CABINET_SLOTS = 12;
+    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon mb-1" width="40" height="40"><span>去旅行解锁</span></div>`;
+
+    function renderCabinetGrid() {
+        if (!cabinetGrid) return;
+        const list = appState.cabinetItems || [];
+        let html = '';
+        for (let i = 0; i < CABINET_SLOTS; i++) {
+            const item = list[i];
+            if (item && (item.scene || item.location)) {
+                const scene = item.scene;
+                const label = scene ? scene.label : item.location;
+                const img = scene ? `<img src="${scene.image}" alt="${scene.label}" class="w-12 h-12 rounded-xl object-cover mb-1 border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                const fallback = scene ? `<span class="text-2xl mb-1 hidden">🧳</span>` : `<span class="text-2xl mb-1">🧳</span>`;
+                html += `<div class="cabinet-slot" data-cabinet-item="true">${img}${fallback}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
+            } else {
+                html += cabinetPlaceholderHTML;
+            }
+        }
+        cabinetGrid.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function addCabinetItem(location, sceneOverride) {
+        if (!cabinetGrid) return;
+        const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        appState.cabinetItems = appState.cabinetItems || [];
+        appState.cabinetItems.unshift({ location, scene });
+        if (appState.cabinetItems.length > CABINET_SLOTS) {
+            appState.cabinetItems = appState.cabinetItems.slice(0, CABINET_SLOTS);
+        }
+        renderCabinetGrid();
+    }
+
+    // --- 辅助函数：地图页场景预览卡片 ---
+    function showScenePreview(location, sceneOverride) {
+        if (!scenePreview) return;
+        const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        if (!scene) return;
+
+        const previewHTML = `
+            <div class="glass-card rounded-2xl p-3 flex items-center gap-3 animate-[fadeIn_0.4s_ease-out]">
+                <img src="${scene.image}" alt="${scene.label}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-gray-500">解锁远行场景</span>
+                    <span class="text-sm font-bold text-gray-800">${scene.label}</span>
+                    <span class="text-[10px] text-gray-500 mt-1">已同步到旅行橱柜与旅行日记插图</span>
+                </div>
+            </div>
+        `;
+        scenePreview.innerHTML = previewHTML;
+        scenePreview.classList.remove('hidden');
+    }
+
+    renderCabinetGrid();
+</script>
+</body>
+</html>

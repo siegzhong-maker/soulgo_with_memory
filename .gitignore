@@ -1,0 +1,22 @@
+# Environment and secrets (do not commit)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE (optional: remove if you want to commit)
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+
+# Vercel
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
