@@ -32,6 +32,7 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
         }
 
         @media (min-width: 420px) {
@@ -453,7 +454,7 @@
         /* 能量传递按钮区域 */
         #energy-fingerprint-area {
             position: absolute;
-            bottom: 8px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
             left: 50%;
             transform: translateX(-50%);
             transform-origin: center bottom;
@@ -471,6 +472,8 @@
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
         }
         #energy-fingerprint-area:active, #energy-fingerprint-area.active {
             transform: translateX(-50%) scale(0.95);
