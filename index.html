@@ -2629,6 +2629,14 @@
             const droppedScene = getDroppedScene(n);
             const scene = droppedScene || getSceneAsset(location);
 
+            // 本次参考的旅行记忆条数（用于成功提示；在 append 前计算，避免把新记入算进去）
+            let memoryCountForHint = (result && result.ok && typeof result.memoryCount === 'number') ? result.memoryCount : 0;
+            if (memoryCountForHint === 0) {
+                const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+                const relevant = location ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0) : travelMemories;
+                memoryCountForHint = relevant.slice(0, 2).length;
+            }
+
             // 2. 生成日记（使用本次实际掉落的 scene）
             const diaryMeta = generateDiaryEntry(location, diaryText, scene);
 
@@ -2638,7 +2646,8 @@
                     date: diaryMeta.date,
                     location,
                     scene,
-                    diaryId: String(diaryMeta.diaryId)
+                    diaryId: String(diaryMeta.diaryId),
+                    diaryText
                 });
             }
 
@@ -2662,7 +2671,7 @@
 
             // 按钮视觉反馈
             locationInput.value = '';
-            btnCheckin.innerText = '打卡成功!';
+            btnCheckin.innerText = memoryCountForHint > 0 ? `打卡成功！已参考 ${memoryCountForHint} 条旅行记忆` : '打卡成功!';
             if (btnCheckin.classList.contains('bg-[#ff8fab]')) {
                 btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
             }
@@ -3418,7 +3427,8 @@
             lengthHint,
             `5. **格式**：只输出日记正文，不要标题，不要markdown格式。`,
             `6. **叙述角度**：全文保持第一人称“我”的日记语气，像写给自己看的记录，不要像聊天或写信，不要频繁用“你”直接和读者说话。`,
-        ].join('\n');
+            relevantMemories.length > 0 ? `7. **记忆呼应**：上方【宠物记忆】中若有旅行记忆，可在合适处自然提一句与过往旅行或记忆的关联（例如对比、延续、呼应），让读者感受到“记得”；不必每篇都强求，有机会就体现。` : ''
+        ].filter(Boolean).join('\n');
 
         const body = {
             model: OPENROUTER_MODEL_ID,
@@ -3458,7 +3468,8 @@
                 return { ok: false, error: 'empty_content' };
             }
 
-            return { ok: true, content: content.trim() };
+            const travelMemoryCount = relevantMemories.length;
+            return { ok: true, content: content.trim(), memoryCount: travelMemoryCount };
         } catch (error) {
             if (error.name === 'AbortError') {
                 return { ok: false, error: 'timeout' };
@@ -3612,7 +3623,7 @@
     }
 
     // --- 宠物记忆：数据与渲染 ---
-    function appendEpisodicMemory({ date, location, scene, diaryId }) {
+    function appendEpisodicMemory({ date, location, scene, diaryId, diaryText }) {
         if (!appState.memories) {
             appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
         }
@@ -3621,11 +3632,16 @@
         const ownerTitle = getOwnerTitle();
 
         let snippet = '';
-        if (flavor && flavor.highlights && flavor.highlights.length) {
-            const spot = flavor.highlights[0];
-            snippet = `那天在${location}的${spot}停了一小会儿，我悄悄把那个画面夹进了记忆卡里。`;
+        if (diaryText && typeof diaryText === 'string' && diaryText.trim()) {
+            const raw = diaryText.trim();
+            snippet = raw.length > 200 ? raw.slice(0, 200) + '…' : raw;
         } else {
-            snippet = `在【${location}】落下脚步的那一刻，我在心里按下了一次小小的保存键，准备以后和${ownerTitle}慢慢回看。`;
+            if (flavor && flavor.highlights && flavor.highlights.length) {
+                const spot = flavor.highlights[0];
+                snippet = `那天在${location}的${spot}停了一小会儿，我悄悄把那个画面夹进了记忆卡里。`;
+            } else {
+                snippet = `在【${location}】落下脚步的那一刻，我在心里按下了一次小小的保存键，准备以后和${ownerTitle}慢慢回看。`;
+            }
         }
 
         const record = {
@@ -3635,7 +3651,8 @@
             location,
             scene: scene || null,
             diaryId: diaryId || null,
-            text: snippet
+            text: snippet,
+            narration: snippet
         };
 
         appState.memories.episodic = appState.memories.episodic || [];
