@@ -2260,6 +2260,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
     }
 
     const TIER_ORDER = { S: 0, A: 1, B: 2, C: 3 };
+    const CABINET_TIER_SLOTS = { S: 2, A: 3, B: 3, C: 4 };
     function sortCabinetByTier(items) {
         return items.map((item, idx) => ({ item, origIdx: idx })).sort((a, b) => {
             const tA = TIER_ORDER[(a.item && a.item.tier) || 'C'] ?? 4;
@@ -2268,37 +2269,60 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         });
     }
 
+    /** 按 tier 分组 cabinetItems，保留 origIdx */
+    function groupCabinetByTier(items) {
+        const byTier = { S: [], A: [], B: [], C: [] };
+        (items || []).forEach((item, idx) => {
+            const t = (item.tier || 'C').toUpperCase();
+            if (byTier[t]) byTier[t].push({ item, origIdx: idx });
+        });
+        return byTier;
+    }
+
     function openCabinetModal() {
-        // 直接根据 appState.cabinetItems 生成内容，按 S→A→B→C 排序
-        const totalSlots = 12; // 3 rows * 4 cols
         const items = appState.cabinetItems || [];
         const count = items.length;
-        const sorted = sortCabinetByTier(items);
-        
-        let gridHTML = '';
-        for (let i = 0; i < totalSlots; i++) {
-            const { item, origIdx } = sorted[i] || {};
-            if (item && (item.scene || item.location)) {
-                const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-                const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
-                const tier = item.tier || 'C';
-                const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
-                gridHTML += `
-                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
-                        <span class="absolute top-0.5 right-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${tierClass}">${tier}</span>
-                        <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
-                        <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
-                    </div>
-                `;
-            } else {
-                gridHTML += `
-                    <div class="cabinet-slot cabinet-slot--empty">
-                        <div class="cabinet-slot__media"><i class="ph-bold ph-server text-3xl cabinet-empty-icon opacity-40"></i></div>
-                        <span class="scale-90">去旅行解锁</span>
-                    </div>
-                `;
+        const byTier = groupCabinetByTier(items);
+        const tierLabels = { S: 'S 级', A: 'A 级', B: 'B 级', C: 'C 级' };
+        const tierCols = { S: 2, A: 3, B: 3, C: 4 };
+
+        let sectionsHTML = '';
+        ['S', 'A', 'B', 'C'].forEach((tier) => {
+            const slots = CABINET_TIER_SLOTS[tier] || 4;
+            const group = byTier[tier] || [];
+            const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+            const cols = tierCols[tier] || 4;
+            let slotsHTML = '';
+            for (let i = 0; i < slots; i++) {
+                const { item, origIdx } = group[i] || {};
+                if (item && (item.scene || item.location)) {
+                    const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+                    const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+                    slotsHTML += `
+                        <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
+                            <span class="absolute top-0.5 right-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${tierClass}">${tier}</span>
+                            <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
+                            <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHTML += `
+                        <div class="cabinet-slot cabinet-slot--empty">
+                            <div class="cabinet-slot__media"><i class="ph-bold ph-server text-3xl cabinet-empty-icon opacity-40"></i></div>
+                            <span class="scale-90">去旅行解锁</span>
+                        </div>
+                    `;
+                }
             }
-        }
+            sectionsHTML += `
+                <div class="mb-3">
+                    <div class="text-[11px] font-bold text-[#5c4a3a] mb-1.5 flex items-center gap-1.5">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${tierClass}">${tierLabels[tier]}</span>
+                    </div>
+                    <div class="grid gap-2" style="grid-template-columns: repeat(${cols}, 1fr);">${slotsHTML}</div>
+                </div>
+            `;
+        });
 
         const emptyHint = count === 0 ? 
             '<div class="text-center text-xs text-[#8d7f73] font-bold mt-4 mb-2">带我去打卡，解锁第一件纪念品吧~</div>' : 
@@ -2314,9 +2338,9 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 
                 ${emptyHint}
                 
-                <!-- 物品网格：固定 3 行等高 -->
-                <div class="grid grid-cols-3 cabinet-modal-grid-equal-rows gap-3 overflow-y-auto no-scrollbar pb-4 flex-1 min-h-0">
-                    ${gridHTML}
+                <!-- 按 S-A-B-C 分级展示 -->
+                <div class="overflow-y-auto no-scrollbar pb-4 flex-1 min-h-0">
+                    ${sectionsHTML}
                 </div>
                 
                 <!-- 底部提示 -->
@@ -3868,7 +3892,12 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
     function getMemorySourceLabel(m) {
         if (!m) return '';
-        if (m.source === 'nfc' && m.nfc_source) return 'NFC-' + m.nfc_source;
+        if (m.source === 'nfc' && m.nfc_source) {
+            const src = m.nfc_source;
+            if (PRESET_NFC_SOURCES.merchants.includes(src)) return 'NFC-商家·' + src;
+            if (PRESET_NFC_SOURCES.dolls.includes(src)) return 'NFC-玩偶·' + src;
+            return 'NFC-' + src;
+        }
         if (m.source === 'checkin' && (m.location_city || m.location)) return '打卡-' + (m.location_city || m.location);
         if (m.source === 'interaction') return '互动-' + (formatTimeSlotLabel(m.time_slot) || '');
         return m.source || '打卡';
@@ -4137,6 +4166,17 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             return 'year';
         }
         function getSourceLabel(m) { return getMemorySourceLabel(m); }
+        function getCheckinFrequency(loc) {
+            const locStr = (loc || '').trim();
+            if (!locStr) return 0;
+            return (appState.locations || []).filter((l) => {
+                const s = (l || '').trim();
+                return s && (s.indexOf(locStr) >= 0 || locStr.indexOf(s) >= 0);
+            }).length;
+        }
+        function getInteractionFrequency() {
+            return (appState.interactionLog || []).length;
+        }
         function makeEpisodicCard(m, isDaily, episodicIndex) {
             const title = isDaily ? (m.source_event ? String(m.source_event).replace(/_/g, ' ') : '日常') : (m.location_spot || ('打卡 ' + (m.location_city || m.location || '温馨小屋')));
             const date = m.date || '';
@@ -4146,6 +4186,15 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             const habitInf = m.habit_inference || '';
             const emotion = m.emotion || '';
             const sourceLabel = getSourceLabel(m);
+            let freqLine = '';
+            if (m.source === 'checkin') {
+                const loc = m.location_city || m.location;
+                const cf = getCheckinFrequency(loc);
+                if (cf > 0) freqLine = `<span class="text-[10px] text-gray-500">已打卡 ${cf} 次</span>`;
+            } else if (m.source === 'interaction') {
+                const iF = getInteractionFrequency();
+                if (iF > 0) freqLine = `<span class="text-[10px] text-gray-500">近 7 天互动 ${iF} 次</span>`;
+            }
             let emotionClass = 'bg-amber-100 text-amber-800';
             if (emotion === 'tender') emotionClass = 'bg-pink-100 text-pink-800';
             else if (emotion === 'nostalgic') emotionClass = 'bg-purple-100 text-purple-800';
@@ -4158,7 +4207,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
                     <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
                     <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(metaLine)}</div>
-                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''} <span class="text-[10px] font-normal text-teal-600 rounded bg-teal-50 px-1">${escapeHtml(sourceLabel)}</span></div>
+                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''} <span class="text-[10px] font-normal text-teal-600 rounded bg-teal-50 px-1">${escapeHtml(sourceLabel)}</span>${freqLine ? ' ' + freqLine : ''}</div>
                     <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(summary)}</div>
                     ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
                     ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
@@ -4506,23 +4555,32 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
     function renderCabinetGrid() {
         if (!cabinetGrid) return;
+        cabinetGrid.className = 'cabinet-shelf flex flex-col gap-2 min-h-[240px]';
         const list = appState.cabinetItems || [];
-        const sorted = sortCabinetByTier(list);
+        const byTier = groupCabinetByTier(list);
+        const tierLabels = { S: 'S 级', A: 'A 级', B: 'B 级', C: 'C 级' };
+        const tierCols = { S: 2, A: 3, B: 3, C: 4 };
         let html = '';
-        for (let i = 0; i < CABINET_SLOTS; i++) {
-            const { item, origIdx } = sorted[i] || {};
-            if (item && (item.scene || item.location)) {
-                const scene = item.scene;
-                const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-                const img = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
-                const fallback = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
-                const tier = item.tier || 'C';
-                const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
-                html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}"><span class="absolute top-0 right-0 text-[9px] font-bold px-1 py-0.5 rounded ${tierClass}">${tier}</span><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
-            } else {
-                html += cabinetPlaceholderHTML;
+        ['S', 'A', 'B', 'C'].forEach((tier) => {
+            const slots = CABINET_TIER_SLOTS[tier] || 4;
+            const group = byTier[tier] || [];
+            const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+            const cols = tierCols[tier] || 4;
+            html += `<div><div class="text-[10px] font-bold text-[#5c4a3a] mb-1 flex items-center gap-1"><span class="px-1 py-0.5 rounded text-[9px] ${tierClass}">${tierLabels[tier]}</span></div><div class="grid gap-2" style="grid-template-columns: repeat(${cols}, 1fr);">`;
+            for (let i = 0; i < slots; i++) {
+                const { item, origIdx } = group[i] || {};
+                if (item && (item.scene || item.location)) {
+                    const scene = item.scene;
+                    const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+                    const img = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                    const fallback = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
+                    html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}"><span class="absolute top-0 right-0 text-[9px] font-bold px-1 py-0.5 rounded ${tierClass}">${tier}</span><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
+                } else {
+                    html += cabinetPlaceholderHTML;
+                }
             }
-        }
+            html += '</div></div>';
+        });
         cabinetGrid.innerHTML = html;
     }
 
