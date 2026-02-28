@@ -933,7 +933,16 @@
             semantic: [],
             semanticProfile: null,  // 单对象，人格设定（identity, preferences, speaking_style, call_user）
             habit: []              // 习惯总结列表
-        }
+        },
+        // 互动统计（用于 memoryScore 计算）
+        interactionLog: [],        // { ts, time_slot } 近7天互动记录
+        nfcScans: []               // { source, ts } NFC 扫描记录（商家/玩偶）
+    };
+
+    // 预设 NFC 来源（无硬件时模拟）
+    const PRESET_NFC_SOURCES = {
+        merchants: ['星巴克', '麦当劳'],
+        dolls: ['labubu', '皮卡丘']
     };
 
     // 日记自增 ID（用于图片和记忆绑定）
@@ -1813,30 +1822,48 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         } else {
             scheduleInactivityFlow();
         }
+        // 记录互动用于 memoryScore
+        const ts = Date.now();
+        const hour = new Date().getHours();
+        let slot = 'afternoon';
+        if (hour >= 5 && hour < 12) slot = 'morning';
+        else if (hour >= 18 && hour < 23) slot = 'evening';
+        else if (hour >= 23 || hour < 5) slot = 'night';
+        appState.interactionLog = appState.interactionLog || [];
+        appState.interactionLog.push({ ts, time_slot: slot });
+        const weekAgo = ts - 7 * 24 * 60 * 60 * 1000;
+        appState.interactionLog = appState.interactionLog.filter((e) => e.ts >= weekAgo);
     }
 
-    // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款随机 ---
-    // 中国地点（key 按具体优先，先匹配广州再匹配广东）
+    // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款 + NFC 预设 ---
+    // 中国地点（key 按具体优先，先匹配广州再匹配广东），每项带 tier、source
     const sceneAssets = {
-        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦' },
-        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
-        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
-        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔' },
-        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃' },
-        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
-        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
-        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' },
-        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' }
+        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦', tier: 'B', source: 'checkin' },
+        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin' },
+        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin' },
+        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔', tier: 'B', source: 'checkin' },
+        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃', tier: 'B', source: 'checkin' },
+        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin' },
+        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin' },
+        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin' },
+        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin' }
     };
     const sceneAssetsKeyOrder = ['北京', '广州', '广东', '上海', '深圳', '成都', '四川', '杭州', '浙江'];
 
     const hiddenSceneAssets = [
-        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔' },
-        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔' },
-        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像' }
+        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔', tier: 'A', source: 'checkin' },
+        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔', tier: 'A', source: 'checkin' },
+        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像', tier: 'A', source: 'checkin' }
     ];
 
-    // 国内场景池（去重）：用于普通随机掉落，打卡地点与掉落物解耦
+    const nfcPresetAssets = [
+        { image: '场景/星巴克.svg', label: '星巴克', tier: 'A', source: 'nfc' },
+        { image: '场景/麦当劳.svg', label: '麦当劳', tier: 'A', source: 'nfc' },
+        { image: '场景/labubu.svg', label: 'labubu', tier: 'S', source: 'nfc' },
+        { image: '场景/皮卡丘.svg', label: '皮卡丘', tier: 'S', source: 'nfc' }
+    ];
+
+    // 国内场景池（去重）
     const domesticScenePool = (() => {
         const seen = new Set();
         return Object.values(sceneAssets).filter(s => {
@@ -1846,15 +1873,102 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         });
     })();
 
-    /** 根据当前打卡次数计算本次掉落的 scene：每 3 次为国外隐藏款，否则从国内池随机 */
-    function getDroppedScene(checkInCount) {
-        if (checkInCount % 3 === 0 && hiddenSceneAssets.length > 0) {
-            return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+    /** 计算 memoryScore（0～6）：记忆维度丰富度 */
+    function computeMemoryScore() {
+        let score = 0;
+        const episodic = appState.memories && appState.memories.episodic ? appState.memories.episodic : [];
+        const locations = appState.locations || [];
+        const interactionLog = appState.interactionLog || [];
+        const nfcScans = appState.nfcScans || [];
+
+        if (episodic.some((m) => m.nfc_source && PRESET_NFC_SOURCES.merchants.includes(m.nfc_source)) || nfcScans.some((s) => PRESET_NFC_SOURCES.merchants.includes(s.source))) score++;
+        if (episodic.some((m) => m.nfc_source && PRESET_NFC_SOURCES.dolls.includes(m.nfc_source)) || nfcScans.some((s) => PRESET_NFC_SOURCES.dolls.includes(s.source))) score++;
+
+        const uniqueLocations = [...new Set(locations.map((l) => (l || '').trim()).filter(Boolean))];
+        if (uniqueLocations.length >= 3) score++;
+
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const recentInteractions = interactionLog.filter((e) => e.ts >= weekAgo);
+        if (recentInteractions.length >= 10) score++;
+
+        const timeSlots = new Set(episodic.map((m) => m.time_slot).filter(Boolean));
+        interactionLog.forEach((e) => { if (e.time_slot) timeSlots.add(e.time_slot); });
+        if (timeSlots.size >= 2) score++;
+
+        const hasWeek = episodic.some((m) => m.time_window === 'week' || m.time_window === 'month' || m.time_window === 'year');
+        const oldDates = episodic.filter((m) => m.date).map((m) => new Date(m.date).getTime());
+        const now = Date.now();
+        const hasOld = oldDates.some((d) => now - d > 24 * 60 * 60 * 1000);
+        if (hasWeek || (episodic.length >= 2 && hasOld)) score++;
+
+        return Math.min(6, score);
+    }
+
+    /** 按 memoryScore 调整 S/A/B/C 掉落概率 */
+    function getAdjustedTierProbabilities(memoryScore) {
+        const s = Math.min(30, 15 + memoryScore * 2.5) / 100;
+        const a = Math.min(25, 20 + memoryScore * 0.8) / 100;
+        const b = 0.2;
+        const c = 1 - s - a - b;
+        return { S: s, A: a, B: b, C: Math.max(0, c) };
+    }
+
+    /** 按概率随机确定掉落级别 */
+    function rollTier(probs) {
+        const r = Math.random();
+        if (r < probs.S) return 'S';
+        if (r < probs.S + probs.A) return 'A';
+        if (r < probs.S + probs.A + probs.B) return 'B';
+        return 'C';
+    }
+
+    /** 地点专属收集物池：北京 10 个示例，其他地点用通用池 */
+    const LOCATION_COLLECTIBLE_POOLS = {
+        '北京': {
+            S: [nfcPresetAssets[2], nfcPresetAssets[3]],
+            A: [nfcPresetAssets[0], nfcPresetAssets[1], hiddenSceneAssets[0]],
+            B: [sceneAssets['北京'], sceneAssets['广州'], sceneAssets['上海']],
+            C: [sceneAssets['深圳'], sceneAssets['成都'], sceneAssets['杭州']]
         }
-        if (domesticScenePool.length > 0) {
-            return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
+    };
+    const defaultPool = {
+        S: nfcPresetAssets.filter((a) => a.tier === 'S'),
+        A: [...nfcPresetAssets.filter((a) => a.tier === 'A'), ...hiddenSceneAssets],
+        B: domesticScenePool,
+        C: domesticScenePool
+    };
+
+    /** 根据 memoryScore 与地点从专属池抽取未获得的收集物 */
+    function getDroppedScene(checkInCount, location) {
+        const score = computeMemoryScore();
+        const probs = getAdjustedTierProbabilities(score);
+        let tier = rollTier(probs);
+        const normalized = typeof normalizeLocationName === 'function' ? normalizeLocationName(location || '') : String(location || '').trim();
+        const pool = LOCATION_COLLECTIBLE_POOLS[normalized] || defaultPool;
+        const obtainedLabels = new Set((appState.cabinetItems || []).map((i) => (i.scene && i.scene.label) || i.location || '').filter(Boolean));
+        let tierPool = pool[tier] || [];
+        if (!Array.isArray(tierPool)) tierPool = [];
+        let available = tierPool.filter((s) => s && s.label && !obtainedLabels.has(s.label));
+        if (available.length === 0) {
+            const fallbackOrder = ['S', 'A', 'B', 'C'];
+            const idx = fallbackOrder.indexOf(tier);
+            for (let i = idx + 1; i < fallbackOrder.length; i++) {
+                const t = fallbackOrder[i];
+                const p = pool[t] || [];
+                available = (Array.isArray(p) ? p : []).filter((s) => s && s.label && !obtainedLabels.has(s.label));
+                if (available.length > 0) { tier = t; break; }
+            }
         }
-        return null;
+        if (available.length === 0) {
+            const allItems = [...(pool.S || []), ...(pool.A || []), ...(pool.B || []), ...(pool.C || [])];
+            available = allItems.filter((s) => s && s.label);
+        }
+        if (available.length === 0) {
+            if (domesticScenePool.length > 0) return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
+            if (hiddenSceneAssets.length > 0) return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+            return null;
+        }
+        return available[Math.floor(Math.random() * available.length)];
     }
 
     function getSceneAsset(location) {
@@ -2145,29 +2259,38 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         if (modalBody) modalBody.innerHTML = '';
     }
 
+    const TIER_ORDER = { S: 0, A: 1, B: 2, C: 3 };
+    function sortCabinetByTier(items) {
+        return items.map((item, idx) => ({ item, origIdx: idx })).sort((a, b) => {
+            const tA = TIER_ORDER[(a.item && a.item.tier) || 'C'] ?? 4;
+            const tB = TIER_ORDER[(b.item && b.item.tier) || 'C'] ?? 4;
+            return tA - tB;
+        });
+    }
+
     function openCabinetModal() {
-        // 直接根据 appState.cabinetItems 生成内容，不再依赖 hidden DOM
+        // 直接根据 appState.cabinetItems 生成内容，按 S→A→B→C 排序
         const totalSlots = 12; // 3 rows * 4 cols
         const items = appState.cabinetItems || [];
         const count = items.length;
+        const sorted = sortCabinetByTier(items);
         
         let gridHTML = '';
         for (let i = 0; i < totalSlots; i++) {
-            const item = items[i];
-            if (item) {
-                // 已解锁
+            const { item, origIdx } = sorted[i] || {};
+            if (item && (item.scene || item.location)) {
                 const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-                // 优先使用场景图，没有则用默认图
-                const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg'; 
-                
+                const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+                const tier = item.tier || 'C';
+                const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
                 gridHTML += `
-                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer" data-item-index="${i}">
+                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
+                        <span class="absolute top-0.5 right-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${tierClass}">${tier}</span>
                         <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
                         <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
                     </div>
                 `;
             } else {
-                // 未解锁
                 gridHTML += `
                     <div class="cabinet-slot cabinet-slot--empty">
                         <div class="cabinet-slot__media"><i class="ph-bold ph-server text-3xl cabinet-empty-icon opacity-40"></i></div>
@@ -2220,8 +2343,11 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
     function openCabinetItemDetail(item, fromCabinetModal = true) {
         const { full: fullLabel } = getShortLabel(item);
         const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+        const tier = item.tier || 'C';
+        const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
         const detailHTML = `
             <div class="flex flex-col items-center gap-4 p-4">
+                <span class="self-end text-xs font-bold px-2 py-1 rounded ${tierClass}">${tier} 级</span>
                 <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="max-w-full max-h-[50vh] object-contain rounded-xl shadow">
                 <p class="text-base font-bold text-[#5c4a3a] text-center">${escapeHtml(fullLabel)}</p>
                 <button type="button" class="text-sm text-[#8d7f73] underline hover:opacity-80">返回橱柜</button>
@@ -2632,24 +2758,32 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             }
 
             const n = appState.locations.length;
-            const droppedScene = getDroppedScene(n);
+            const droppedScene = getDroppedScene(n, location);
             const scene = droppedScene || getSceneAsset(location);
 
-            // 本次参考的旅行记忆条数（用于成功提示；在 append 前计算，避免把新记入算进去）
+            // 本次参考的旅行记忆条数与来源（用于成功提示与日记卡片展示）
             let memoryCountForHint = (result && result.ok && typeof result.memoryCount === 'number') ? result.memoryCount : 0;
-            if (memoryCountForHint === 0) {
+            let memorySources = [];
+            if (typeof recallRelevantMemories === 'function') {
+                const relevant = recallRelevantMemories({ location, limit: 2, includeDaily: false });
+                memorySources = relevant.map((m) => getMemorySourceLabel(m)).filter(Boolean);
+                if (memoryCountForHint === 0) memoryCountForHint = relevant.length;
+            }
+            if (memoryCountForHint === 0 && memorySources.length === 0) {
                 const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
                 const relevant = location ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0) : travelMemories;
                 memoryCountForHint = relevant.slice(0, 2).length;
+                memorySources = relevant.slice(0, 2).map((m) => getMemorySourceLabel(m)).filter(Boolean);
             }
 
-            // 2. 生成日记（使用本次实际掉落的 scene）
-            const diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint);
+            // 2. 生成日记（使用本次实际掉落的 scene，传入记忆来源用于可展开备注）
+            const diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint, memorySources);
 
-            // 2.5 生成一条情景记忆：优先调用 /api/memory-summary 抽取 summary/emotion，失败则回退模板
+            // 2.5 生成一条情景记忆：优先调用 /api/memory-summary 抽取 summary/emotion/key_facts，失败则回退模板
             if (diaryMeta && diaryMeta.diaryId) {
                 let summaryFromLLM = null;
                 let emotionFromLLM = null;
+                let keyFactsFromLLM = null;
                 try {
                     const timeSlot = typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '';
                     const travelMemoriesForDiff = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
@@ -2661,16 +2795,18 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                         ? (recentForCity.summary || recentForCity.narration || recentForCity.text || '')
                         : '';
 
+                    const checkinFreq = (appState.locations || []).filter((l) => (l || '').indexOf(location) >= 0 || (location || '').indexOf(l || '') >= 0).length;
+                    const interactionFreq = (appState.interactionLog || []).length;
                     const body = {
                         diaryText,
                         location,
                         date: diaryMeta.date,
                         time_slot: timeSlot,
-                        personality: appState.petPersonality || '小火苗'
+                        personality: appState.petPersonality || '小火苗',
+                        checkin_frequency: checkinFreq,
+                        interaction_frequency: interactionFreq
                     };
-                    if (lastSummary) {
-                        body.last_summary = lastSummary;
-                    }
+                    if (lastSummary) body.last_summary = lastSummary;
 
                     const resp = await fetch('/api/memory-summary', {
                         method: 'POST',
@@ -2683,6 +2819,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                         if (data && data.summary && data.emotion) {
                             summaryFromLLM = data.summary;
                             emotionFromLLM = data.emotion;
+                            if (Array.isArray(data.key_facts)) keyFactsFromLLM = data.key_facts;
                         } else {
                             console.warn('[Memory Summary] 响应缺少 summary/emotion 字段，使用模板回退。', data);
                         }
@@ -2699,7 +2836,8 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     scene,
                     diaryId: String(diaryMeta.diaryId),
                     summary: summaryFromLLM || undefined,
-                    emotion: emotionFromLLM || undefined
+                    emotion: emotionFromLLM || undefined,
+                    key_facts: keyFactsFromLLM || undefined
                 });
             }
 
@@ -2972,6 +3110,13 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         if (!diaryImageInput) return;
 
         document.addEventListener('click', (event) => {
+            const hintSummary = event.target.closest('.memory-hint-summary');
+            if (hintSummary) {
+                const block = hintSummary.closest('.memory-hint-block');
+                const detail = block && block.querySelector('.memory-sources-detail');
+                if (detail) detail.classList.toggle('hidden');
+                return;
+            }
             const btn = event.target.closest('.diary-add-image');
             if (!btn) return;
             const diaryId = btn.getAttribute('data-diary-id');
@@ -3068,15 +3213,23 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
             if (!pConfig) return '在等和你一起去旅行～ ✨';
 
-            // 一定概率使用记忆中的旁白作为气泡（体现记忆驱动互动）
-            const episodicTravel = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
-            const episodicDaily = typeof getEpisodicDaily === 'function' ? getEpisodicDaily() : [];
-            const recentMemories = episodicTravel.slice(0, 2).concat(episodicDaily.slice(0, 1));
-            if (recentMemories.length > 0 && Math.random() < 0.25) {
-                const m = recentMemories[Math.floor(Math.random() * recentMemories.length)];
-                const line = (m.narration || m.text || '').trim();
-                if (line && line.length <= 80) return line;
-                if (line && line.length > 80) return line.slice(0, 77) + '…';
+            // 一定概率使用情境 recall 的记忆作为气泡（体现记忆驱动互动）
+            if (typeof recallRelevantMemories === 'function' && Math.random() < 0.25) {
+                const recalled = recallRelevantMemories({
+                    location: lastLocation,
+                    time_slot: typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '',
+                    recent_locations: appState.locations ? appState.locations.slice(-3) : [],
+                    includeDaily: true,
+                    limit: 3
+                });
+                if (recalled.length > 0) {
+                    const m = recalled[Math.floor(Math.random() * recalled.length)];
+                    const line = (m.narration || m.text || m.summary || '').trim();
+                    if (line) {
+                        if (typeof markMemoryRecalled === 'function') markMemoryRecalled(m);
+                        return line.length <= 80 ? line : line.slice(0, 77) + '…';
+                    }
+                }
             }
 
             // 优先检查是否有旅行相关的回忆对话
@@ -3445,12 +3598,11 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         const promptDesc = pConfig ? pConfig.promptDesc : '热情、可爱、治愈。';
         const ownerTitle = getOwnerTitle();
 
-        // 从记忆系统注入：人格设定 + 与当前地点相关的旅行记忆（供 LLM 体现「记得」）
+        // 从记忆系统注入：人格设定 + 情境 recall 的旅行记忆（供 LLM 体现「记得」）
         const semanticProfile = typeof getSemanticProfileForDisplay === 'function' ? getSemanticProfileForDisplay() : null;
-        const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
-        const relevantMemories = location
-            ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0).slice(0, 2)
-            : travelMemories.slice(0, 2);
+        const relevantMemories = typeof recallRelevantMemories === 'function'
+            ? recallRelevantMemories({ location, time_slot: typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '', includeDaily: false, limit: 2 })
+            : [];
         const memoryBlock = [];
         if (semanticProfile && semanticProfile.identity) memoryBlock.push('人格设定：' + semanticProfile.identity);
         if (semanticProfile && semanticProfile.speaking_style && semanticProfile.speaking_style.description) memoryBlock.push('说话风格：' + semanticProfile.speaking_style.description);
@@ -3459,9 +3611,11 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             const cityLabel = m.location_city || m.location || '';
             const timeLabel = typeof formatTimeSlotLabel === 'function' ? formatTimeSlotLabel(m.time_slot) : '';
             const summary = m.summary || m.narration || m.text || '';
+            const sourceLabel = typeof getMemorySourceLabel === 'function' ? getMemorySourceLabel(m) : '';
             const prefix = [dateStr, cityLabel, timeLabel].filter(Boolean).join(' ');
             const line = prefix ? `${prefix} —— ${summary}` : summary;
-            if (line) memoryBlock.push('旅行记忆：' + line);
+            const withSource = sourceLabel ? `[${sourceLabel}] ${line}` : line;
+            if (line) memoryBlock.push('旅行记忆：' + withSource);
         });
         const memoryText = memoryBlock.length > 0 ? '\n【宠物记忆（可参考以体现连贯）】\n' + memoryBlock.join('\n') : '';
 
@@ -3585,7 +3739,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
     }
 
     // --- 辅助函数：生成日记 ---
-    function generateDiaryEntry(location, content, sceneOverride, memoryCount) {
+    function generateDiaryEntry(location, content, sceneOverride, memoryCount, memorySources) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
         const personality = appState.petPersonality;
         const personalityConfig = PERSONALITY_TYPES[personality] || null;
@@ -3601,8 +3755,13 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             ? content.trim()
             : buildDiaryText(location, personality);
 
-        const memoryHint = typeof memoryCount === 'number' && memoryCount > 0
-            ? `<div class="mt-1 text-[10px] text-gray-400">本篇参考了 ${memoryCount} 条旅行记忆</div>`
+        const hasSources = Array.isArray(memorySources) && memorySources.length > 0;
+        const count = typeof memoryCount === 'number' && memoryCount > 0 ? memoryCount : (hasSources ? memorySources.length : 0);
+        const memoryHint = count > 0
+            ? `<div class="mt-1 text-[10px] text-gray-400 memory-hint-block" data-diary-id="${diaryId}">
+                <span class="memory-hint-summary cursor-pointer hover:text-[#ff8fab]">本篇参考了 ${count} 条旅行记忆</span>
+                ${hasSources ? `<div class="memory-sources-detail hidden mt-1 text-[10px] text-teal-600">来源：${memorySources.map((s) => escapeHtml(s)).join('、')}</div>` : ''}
+               </div>`
             : '';
 
         const sceneImageBlock = scene ? `
@@ -3707,6 +3866,14 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         return map[timeSlot] || '';
     }
 
+    function getMemorySourceLabel(m) {
+        if (!m) return '';
+        if (m.source === 'nfc' && m.nfc_source) return 'NFC-' + m.nfc_source;
+        if (m.source === 'checkin' && (m.location_city || m.location)) return '打卡-' + (m.location_city || m.location);
+        if (m.source === 'interaction') return '互动-' + (formatTimeSlotLabel(m.time_slot) || '');
+        return m.source || '打卡';
+    }
+
     function buildEpisodicSummary({ city, spot, timeSlot, personalityKey }) {
         const timeLabel = formatTimeSlotLabel(timeSlot);
         const placeText = spot ? `${city}的${spot}` : city;
@@ -3747,8 +3914,8 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
      *   - getPetBubbleText 随机抽取旅行/日常记忆作为宠物房间气泡文案；
      *   - 记忆页 renderMemories / openMemoryEditForm 展示与编辑 episodic、semanticProfile 与 habit。
      */
-    // 支持可选 summary/emotion：若由 LLM 记忆抽取接口返回则传入，否则用 buildEpisodicSummary 模板
-    function appendEpisodicMemory({ date, location, scene, diaryId, summary: givenSummary, emotion: givenEmotion }) {
+    // 支持可选 summary/emotion/key_facts/source/nfc_source：若由 LLM 记忆抽取接口返回则传入，否则用 buildEpisodicSummary 模板
+    function appendEpisodicMemory({ date, location, scene, diaryId, summary: givenSummary, emotion: givenEmotion, key_facts: givenKeyFacts, source: givenSource, nfc_source: givenNfcSource }) {
         if (!appState.memories) {
             appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
         }
@@ -3767,6 +3934,13 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         const summary = summaryInfo.summary;
         const emotion = summaryInfo.emotion;
 
+        // importance: 首次打卡该城市 + 高情绪(excited/nostalgic) 更高
+        const visitCount = (appState.locations || []).filter((l) => (l || '').indexOf(city) >= 0 || (city || '').indexOf(l || '') >= 0).length;
+        const isFirstVisit = visitCount <= 1;
+        const highEmotion = emotion === 'excited' || emotion === 'nostalgic';
+        const importance = Math.min(1, Math.max(0, 0.5 + (isFirstVisit ? 0.2 : 0) + (highEmotion ? 0.2 : (emotion === 'tender' || emotion === 'curious' ? 0.1 : 0))));
+
+        const now = new Date();
         const record = {
             type: 'episodic',
             category: 'travel',
@@ -3782,7 +3956,15 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             scene: scene || null,
             scene_label: scene && scene.label ? scene.label : null,
             narration: summary,
-            text: summary
+            text: summary,
+            strength: 0.9,
+            last_recalled_at: null,
+            recall_count: 0,
+            key_facts: Array.isArray(givenKeyFacts) ? givenKeyFacts.slice(0, 4) : [],
+            importance,
+            source: givenSource || 'checkin',
+            nfc_source: givenNfcSource || null,
+            time_window: 'current'
         };
 
         appState.memories.episodic = appState.memories.episodic || [];
@@ -3832,6 +4014,83 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         return list.filter((m) => (m.category === 'travel' || m.category === undefined));
     }
 
+    const MEMORY_STRENGTH_THRESHOLD = 0.3;
+    const MEMORY_DECAY_PER_WEEK = 0.95;
+
+    /** 衰减记忆强度：按日期/上次 recall 时间衰减，strength < 阈值视为淡忘 */
+    function decayMemoryStrength() {
+        const episodic = appState.memories && appState.memories.episodic;
+        if (!episodic || episodic.length === 0) return;
+        const now = Date.now();
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        episodic.forEach((m) => {
+            const strength = typeof m.strength === 'number' ? m.strength : 0.9;
+            let refTime = now;
+            if (m.last_recalled_at) {
+                const t = new Date(m.last_recalled_at).getTime();
+                if (!isNaN(t)) refTime = t;
+            } else if (m.date) {
+                const t = new Date(String(m.date).replace(/-/g, '/')).getTime();
+                if (!isNaN(t)) refTime = t;
+            }
+            const elapsedWeeks = Math.max(0, (now - refTime) / oneWeek);
+            const decayed = strength * Math.pow(MEMORY_DECAY_PER_WEEK, Math.floor(elapsedWeeks));
+            m.strength = Math.max(0, Math.min(1, decayed));
+        });
+    }
+
+    /**
+     * 情境触发 recall：按 recallScore 排序返回最相关的记忆
+     * @param {Object} context - { location?, time_slot?, recent_locations?, limit?, includeDaily? }
+     * @returns {Array} 排序后的记忆列表
+     */
+    function recallRelevantMemories(context) {
+        decayMemoryStrength();
+        const travel = getEpisodicTravel();
+        const daily = (context?.includeDaily !== false) && (appState.memories && appState.memories.episodic)
+            ? appState.memories.episodic.filter((m) => m.category === 'daily')
+            : [];
+        const all = travel.concat(daily);
+        const limit = typeof context?.limit === 'number' ? context.limit : 3;
+        const loc = (context?.location || '').trim();
+        const timeSlot = context?.time_slot || (typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '');
+        const recentLocs = context?.recent_locations || (appState.locations ? appState.locations.slice(-3) : []);
+        const contextStr = [loc].concat(recentLocs).filter(Boolean).join(' ');
+
+        const scored = all.map((m, idx) => {
+            const strength = typeof m.strength === 'number' ? m.strength : 0.9;
+            if (strength < MEMORY_STRENGTH_THRESHOLD) return { m, score: -1 };
+            const importance = typeof m.importance === 'number' ? m.importance : 0.5;
+            const recency = 1 - idx / Math.max(1, all.length);
+            let relevance = 0;
+            const cityLabel = (m.location_city || m.location || '').trim();
+            if (loc && cityLabel && (cityLabel.indexOf(loc) >= 0 || loc.indexOf(cityLabel) >= 0)) relevance += 0.8;
+            else if (recentLocs.some((r) => cityLabel && (cityLabel.indexOf(r) >= 0 || (r || '').indexOf(cityLabel) >= 0))) relevance += 0.5;
+            if (timeSlot && m.time_slot === timeSlot) relevance += 0.2;
+            const facts = m.key_facts || [];
+            if (facts.some((f) => contextStr && contextStr.indexOf(f) >= 0)) relevance += 0.3;
+            const score = 0.3 * recency + 0.4 * relevance + 0.2 * strength + 0.1 * importance;
+            return { m, score };
+        });
+
+        return scored
+            .filter((x) => x.score >= 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit)
+            .map((x) => x.m);
+    }
+
+    /** 更新记忆的 recall 状态（被气泡/日记使用时调用） */
+    function markMemoryRecalled(memory) {
+        if (!memory || !appState.memories || !appState.memories.episodic) return;
+        const idx = appState.memories.episodic.indexOf(memory);
+        if (idx < 0) return;
+        const m = appState.memories.episodic[idx];
+        m.last_recalled_at = new Date().toISOString();
+        m.recall_count = (m.recall_count || 0) + 1;
+        m.strength = Math.min(1, (m.strength ?? 0.9) + 0.05);
+    }
+
     /** 情景记忆·日常：episodic 且 category 为 daily */
     function getEpisodicDaily() {
         const list = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
@@ -3866,6 +4125,18 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             </div>
         `;
 
+        function getTimeWindow(m) {
+            if (m.time_window) return m.time_window;
+            const d = m.date ? new Date(m.date).getTime() : 0;
+            if (!d) return 'current';
+            const now = Date.now();
+            const diff = now - d;
+            if (diff < 24 * 60 * 60 * 1000) return 'current';
+            if (diff < 7 * 24 * 60 * 60 * 1000) return 'week';
+            if (diff < 30 * 24 * 60 * 60 * 1000) return 'month';
+            return 'year';
+        }
+        function getSourceLabel(m) { return getMemorySourceLabel(m); }
         function makeEpisodicCard(m, isDaily, episodicIndex) {
             const title = isDaily ? (m.source_event ? String(m.source_event).replace(/_/g, ' ') : '日常') : (m.location_spot || ('打卡 ' + (m.location_city || m.location || '温馨小屋')));
             const date = m.date || '';
@@ -3874,6 +4145,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             const summary = m.summary || m.narration || m.text || '';
             const habitInf = m.habit_inference || '';
             const emotion = m.emotion || '';
+            const sourceLabel = getSourceLabel(m);
             let emotionClass = 'bg-amber-100 text-amber-800';
             if (emotion === 'tender') emotionClass = 'bg-pink-100 text-pink-800';
             else if (emotion === 'nostalgic') emotionClass = 'bg-purple-100 text-purple-800';
@@ -3886,7 +4158,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
                     <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
                     <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(metaLine)}</div>
-                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''}</div>
+                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''} <span class="text-[10px] font-normal text-teal-600 rounded bg-teal-50 px-1">${escapeHtml(sourceLabel)}</span></div>
                     <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(summary)}</div>
                     ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
                     ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
@@ -3901,8 +4173,18 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             if (m.category === 'daily') dailyCardsWithIndex.push({ m, i });
             else travelCardsWithIndex.push({ m, i });
         });
+        const currentTravel = travelCardsWithIndex.filter(({ m }) => getTimeWindow(m) === 'current');
+        const historyTravel = travelCardsWithIndex.filter(({ m }) => getTimeWindow(m) !== 'current');
+        const currentDaily = dailyCardsWithIndex.filter(({ m }) => getTimeWindow(m) === 'current');
+        const historyDaily = dailyCardsWithIndex.filter(({ m }) => getTimeWindow(m) !== 'current');
+        const currentSection = currentTravel.length + currentDaily.length > 0
+            ? '<div class="mb-3"><div class="text-[11px] font-bold text-gray-500 mb-2">当前记忆</div><div class="flex flex-col gap-2">' + currentTravel.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + currentDaily.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div></div>'
+            : '';
+        const historySection = historyTravel.length + historyDaily.length > 0
+            ? '<div><div class="text-[11px] font-bold text-gray-500 mb-2">历史记忆（本周/本月/本年）</div><div class="flex flex-col gap-2">' + historyTravel.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + historyDaily.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div></div>'
+            : '';
         const travelCardsHTML = currentMemoryTab === 'travel' && (travelCardsWithIndex.length > 0 || dailyCardsWithIndex.length > 0)
-            ? '<div class="flex flex-col gap-2">' + travelCardsWithIndex.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + dailyCardsWithIndex.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div>'
+            ? '<div class="flex flex-col gap-0">' + currentSection + historySection + '</div>'
             : '';
         const travelEmptyHTML = (currentMemoryTab === 'travel' && travelCardsWithIndex.length === 0 && dailyCardsWithIndex.length === 0)
             ? '<p class="text-center text-xs text-gray-500 py-4">我还没有记下这类呢，带我去打卡一两个地方试试吧。</p>'
@@ -4063,6 +4345,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
     function openMemoryModal() {
         ensureMemorySeeds();
+        if (typeof decayMemoryStrength === 'function') decayMemoryStrength();
         const placeholder = '<div></div>'; // 内容由 renderMemories 注入
         openModal('宠物记忆', placeholder, 'default');
         renderMemories();
@@ -4107,7 +4390,15 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     text: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
                     habit_inference: '',
                     emotion: 'excited',
-                    is_seed: true
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.8,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: [],
+                    source: 'checkin',
+                    nfc_source: null,
+                    time_window: 'current'
                 },
                 {
                     type: 'episodic',
@@ -4123,7 +4414,59 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     text: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～',
                     habit_inference: '我发现你在离开一座城市的时候，总会撑着不睡，所以我都会多看几眼窗外，把那一路都记下来。',
                     emotion: 'tender',
-                    is_seed: true
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.7,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['高铁', '海边', '云'],
+                    source: 'checkin',
+                    nfc_source: null,
+                    time_window: 'week'
+                },
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-26',
+                    time_slot: 'morning',
+                    source_event: 'nfc_merchant',
+                    personality: personalityKey,
+                    summary: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    narration: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    text: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    habit_inference: '',
+                    emotion: 'curious',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.6,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['星巴克', '咖啡'],
+                    source: 'nfc',
+                    nfc_source: '星巴克',
+                    time_window: 'week'
+                },
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-25',
+                    time_slot: 'afternoon',
+                    source_event: 'nfc_doll',
+                    personality: personalityKey,
+                    summary: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    narration: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    text: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    habit_inference: '',
+                    emotion: 'excited',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.7,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['labubu', '玩偶'],
+                    source: 'nfc',
+                    nfc_source: 'labubu',
+                    time_window: 'week'
                 }
             ].concat(episodic);
         }
@@ -4143,7 +4486,15 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     narration: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
                     text: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
                     habit_inference: '我好像也养成了一个习惯：只要深夜看到屏幕亮起，我就会先把最暖的那几段旅程翻到手边。',
-                    is_critical: true
+                    is_critical: true,
+                    strength: 0.9,
+                    importance: 0.6,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['记忆本', '深夜'],
+                    source: 'interaction',
+                    nfc_source: null,
+                    time_window: 'current'
                 }
             ]);
         }
@@ -4156,15 +4507,18 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
     function renderCabinetGrid() {
         if (!cabinetGrid) return;
         const list = appState.cabinetItems || [];
+        const sorted = sortCabinetByTier(list);
         let html = '';
         for (let i = 0; i < CABINET_SLOTS; i++) {
-            const item = list[i];
+            const { item, origIdx } = sorted[i] || {};
             if (item && (item.scene || item.location)) {
                 const scene = item.scene;
                 const { short: shortLabel, full: fullLabel } = getShortLabel(item);
                 const img = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
                 const fallback = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
-                html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${i}"><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
+                const tier = item.tier || 'C';
+                const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+                html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}"><span class="absolute top-0 right-0 text-[9px] font-bold px-1 py-0.5 rounded ${tierClass}">${tier}</span><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
             } else {
                 html += cabinetPlaceholderHTML;
             }
@@ -4196,14 +4550,16 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         ) || null;
     }
 
-    function addCabinetItem(location, sceneOverride) {
+    function addCabinetItem(location, sceneOverride, tierOverride, sourceOverride) {
         if (!cabinetGrid) return;
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
         if (!scene) return;
         appState.cabinetItems = appState.cabinetItems || [];
         if (appState.cabinetItems.length >= CABINET_SLOTS) return;
 
-        appState.cabinetItems.unshift({ location, scene });
+        const tier = tierOverride || (scene && scene.tier) || 'C';
+        const source = sourceOverride || (scene && scene.source) || 'checkin';
+        appState.cabinetItems.unshift({ location, scene, tier, source });
         renderCabinetGrid();
         renderMemoryWall(); // 同步更新墙面
     }

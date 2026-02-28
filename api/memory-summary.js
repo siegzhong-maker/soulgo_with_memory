@@ -4,10 +4,22 @@
  */
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-const MEMORY_EXTRACTION_SYSTEM = `你是一个记忆抽取器，从宠物旅行日记中提取一条可检索的记忆摘要。
-只输出 JSON：{"summary":"...","emotion":"..."}，不要其他文字。
-summary 30～50 字，第一人称，描述宠物在该地的具体表现或感受；emotion 从 excited/tender/curious/nostalgic/calm 中选一。
-只抽取具体行为/感受，可含当地特色；不抽取泛泛的模板句。`;
+const MEMORY_EXTRACTION_SYSTEM = `你是一个记忆抽取器，从宠物旅行日记及上下文（地点、时间、性格、NFC 来源等）中提取一条可检索的记忆摘要。
+只输出 JSON：{"summary":"...","emotion":"...","key_facts":["词1","词2",...]}，不要其他文字。
+
+【输出规则】
+- summary：30～50 字，第一人称，描述宠物在该地的具体表现或感受；可含当地特色（腐乳饼、秦淮河等）；若有 NFC 来源（商家如星巴克麦当劳、玩偶如 labubu 皮卡丘），可自然融入该联名/玩偶场景。
+- emotion：从 excited/tender/curious/nostalgic/calm 中选一，与性格和内容匹配。
+- key_facts：2～4 个可联想的关键词，用于关联检索与收集物判定。可包含：地点特色、物品、天气、商家名（星巴克/麦当劳）、玩偶名（labubu/皮卡丘）等。
+
+【抽取原则】
+- 只抽取具体行为/感受，可含当地特色；不抽取泛泛的模板句。
+- 若提供了 NFC 来源、打卡频次、互动频次，可作参考以丰富 summary 或 key_facts，但以日记正文为主。
+
+【示例】输入含 NFC 来源时：
+日记：在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！
+地点：北京 | 时间：早上 | 性格：小火苗 | NFC 来源：星巴克
+输出：{"summary":"早上在北京星巴克门口和咖啡杯公仔合了影，超开心！","emotion":"excited","key_facts":["星巴克","咖啡杯","北京"]}`;
 
 export async function POST(request) {
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -28,7 +40,7 @@ export async function POST(request) {
         );
     }
 
-    const { diaryText, location, date, time_slot, personality, last_summary } = payload || {};
+    const { diaryText, location, date, time_slot, personality, last_summary, nfc_source, checkin_frequency, interaction_frequency } = payload || {};
 
     if (!diaryText || !location || !date || !time_slot || !personality) {
         return new Response(
@@ -45,6 +57,18 @@ export async function POST(request) {
     lines.push(`地点：${location} | 时间：${time_slot} | 性格：${personality}`);
     if (last_summary) {
         lines.push(`最近一次相关旅行记忆摘要：${last_summary}`);
+    }
+    if (nfc_source) {
+        lines.push(`NFC 来源：${nfc_source}`);
+    }
+    if (typeof checkin_frequency === 'number') {
+        lines.push(`该地点打卡频次：${checkin_frequency} 次`);
+    }
+    if (typeof interaction_frequency === 'number') {
+        lines.push(`近 7 天互动频次：${interaction_frequency} 次`);
+    }
+    if (nfc_source || typeof checkin_frequency === 'number' || typeof interaction_frequency === 'number') {
+        lines.push('（以上为补充上下文，抽取时以日记为主，可参考融入 summary 或 key_facts）');
     }
     lines.push('请抽取一条记忆。');
     const userContent = lines.join('\n');
@@ -145,6 +169,9 @@ export async function POST(request) {
 
     const summary = parsed && parsed.summary;
     const emotion = parsed && parsed.emotion;
+    const key_facts = Array.isArray(parsed && parsed.key_facts)
+        ? parsed.key_facts.filter((x) => typeof x === 'string').slice(0, 4)
+        : [];
 
     if (!summary || !emotion) {
         return new Response(
@@ -157,7 +184,7 @@ export async function POST(request) {
     }
 
     return new Response(
-        JSON.stringify({ summary, emotion }),
+        JSON.stringify({ summary, emotion, key_facts }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 }

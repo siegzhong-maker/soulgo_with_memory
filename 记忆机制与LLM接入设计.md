@@ -1,5 +1,19 @@
 # 记忆机制与 LLM 接入设计
 
+> **完整方案**：详见 `.cursor/plans/记忆方案重新设计_ae86ef5c.plan.md`，包含分层架构、收集物获取策略、旅行记忆历史/当前分区、日记记忆来源备注、素材导入等。
+
+## 已实现（MVP）
+
+- **数据结构**：episodic 增加 `source`、`time_window`、`nfc_source`；cabinetItem 增加 `tier`、`source`；appState 增加 `interactionLog`、`nfcScans`
+- **收集物获取策略**：`computeMemoryScore`、`getAdjustedTierProbabilities`、`getDroppedScene(location)` 基于记忆维度调整 S/A/B/C 概率
+- **橱柜**：S-A-B-C 分级、等级角标、按 tier 排序
+- **旅行记忆**：当前/历史分区、来源标签（NFC-星巴克、打卡-北京、互动-傍晚）
+- **日记**：记忆来源备注、可展开详情
+- **memory-summary**：支持 `checkin_frequency`、`interaction_frequency`
+- **日记 prompt**：注入记忆来源类型
+
+---
+
 ## 一、当前机制梳理
 
 ### 1. 什么时候会记忆（触发时机）
