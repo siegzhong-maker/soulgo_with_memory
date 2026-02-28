@@ -1444,6 +1444,27 @@
         { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像' }
     ];
 
+    // 国内场景池（去重）：用于普通随机掉落，打卡地点与掉落物解耦
+    const domesticScenePool = (() => {
+        const seen = new Set();
+        return Object.values(sceneAssets).filter(s => {
+            if (seen.has(s.image)) return false;
+            seen.add(s.image);
+            return true;
+        });
+    })();
+
+    /** 根据当前打卡次数计算本次掉落的 scene：每 3 次为国外隐藏款，否则从国内池随机 */
+    function getDroppedScene(checkInCount) {
+        if (checkInCount % 3 === 0 && hiddenSceneAssets.length > 0) {
+            return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+        }
+        if (domesticScenePool.length > 0) {
+            return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
+        }
+        return null;
+    }
+
     function getSceneAsset(location) {
         const normalized = typeof normalizeLocationName === 'function' ? normalizeLocationName(location) : String(location || '').trim();
         for (let i = 0; i < sceneAssetsKeyOrder.length; i++) {
@@ -2047,23 +2068,24 @@
             diaryText = buildDiaryText(location, appState.petPersonality);
         }
 
-        const scene = getSceneAsset(location);
-        const existingCabinetItem = findCabinetItem(scene, location);
-        const isFirstUnlock = !existingCabinetItem;
+        const n = appState.locations.length;
+        const droppedScene = getDroppedScene(n);
+        const scene = droppedScene || getSceneAsset(location);
 
-        // 2. 生成日记
+        // 2. 生成日记（使用本次实际掉落的 scene）
         generateDiaryEntry(location, diaryText, scene);
 
         // 3. 改变宠物房间状态与橱柜
         triggerAIPetAction(`刚才去了${location}`);
         setPetState(PET_STATES.INTERACT);
         petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
-        if (isFirstUnlock && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
         diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
-        if (isFirstUnlock) {
-            addCabinetItem(location, scene);         // 在橱柜中新增一个纪念品（同一 scene 保证隐藏款一致）
-            showScenePreview(location, scene);      // 如有特殊场景，展示场景预览卡片
+        const cabinetNotFull = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
+        if (cabinetNotFull && droppedScene && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+        if (cabinetNotFull && droppedScene) {
+            addCabinetItem(location, droppedScene);
+            showScenePreview(location, droppedScene);
         }
         playExcitedAnimation();                 // 宠物播放一次兴奋动画
 
@@ -2926,18 +2948,11 @@
     function addCabinetItem(location, sceneOverride) {
         if (!cabinetGrid) return;
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        if (!scene) return;
         appState.cabinetItems = appState.cabinetItems || [];
-
-        const existingItem = findCabinetItem(scene, location);
-        if (existingItem) {
-            return;
-        }
+        if (appState.cabinetItems.length >= CABINET_SLOTS) return;
 
         appState.cabinetItems.unshift({ location, scene });
-
-        if (appState.cabinetItems.length > CABINET_SLOTS) {
-            appState.cabinetItems = appState.cabinetItems.slice(0, CABINET_SLOTS);
-        }
         renderCabinetGrid();
     }
 
