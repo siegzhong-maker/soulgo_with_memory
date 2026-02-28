@@ -10,6 +10,9 @@ Thumbs.db
 # Editor / IDE (optional: remove if you want to commit)
 .vscode/
 .idea/
+.cursor/
+.trae/
+.snapshots/
 
 # Dependencies
 node_modules/
