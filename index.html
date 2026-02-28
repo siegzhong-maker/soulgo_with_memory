@@ -3656,7 +3656,7 @@
 
     function buildEpisodicSummary({ city, spot, timeSlot, personalityKey }) {
         const timeLabel = formatTimeSlotLabel(timeSlot);
-        const place = spot || city || '这里';
+        const placeText = spot ? `${city}的${spot}` : city;
 
         let emotion = 'calm';
         let summary = '';
@@ -3665,16 +3665,16 @@
 
         if (p === '小火苗') {
             emotion = 'excited';
-            summary = `${timeLabel}在${place}一路蹦蹦跳跳，差点把照片都晃糊了。`;
+            summary = `${timeLabel}在${placeText}一路蹦蹦跳跳，差点把照片都晃糊了。`;
         } else if (p === '小云朵') {
             emotion = 'tender';
-            summary = `${timeLabel}在${place}慢慢走慢慢看，把安静的风景都藏进心里。`;
+            summary = `${timeLabel}在${placeText}慢慢走慢慢看，把安静的风景都藏进心里。`;
         } else if (p === '小灯泡') {
             emotion = 'curious';
-            summary = `${timeLabel}在${place}到处张望，记下好多细节准备回去慢慢研究。`;
+            summary = `${timeLabel}在${placeText}到处张望，记下好多细节准备回去慢慢研究。`;
         } else {
             emotion = 'nostalgic';
-            summary = `${timeLabel}在${place}走得不快不慢，像是给这条路盖了一个小小的纪念章。`;
+            summary = `${timeLabel}在${placeText}走得不快不慢，像是给这条路盖了一个小小的纪念章。`;
         }
 
         return { summary, emotion };
@@ -3691,9 +3691,8 @@
         const timeSlot = getCurrentTimeSlot();
         const personalityKey = appState.petPersonality || '小火苗';
 
-        let spot = '';
-        if (scene && scene.label) spot = scene.label;
-        else if (flavor && flavor.highlights && flavor.highlights.length) spot = flavor.highlights[0];
+        // 记忆地点只锚定用户输入：仅用同城 flavor 高亮点，不用随机掉落的 scene.label（避免「潮州打卡却记成广州」）
+        const spot = (flavor && flavor.highlights && flavor.highlights.length) ? flavor.highlights[0] : '';
 
         const summaryInfo = buildEpisodicSummary({ city, spot, timeSlot, personalityKey });
         const summary = summaryInfo.summary;
@@ -3705,13 +3704,14 @@
             date,
             location,
             location_city: city,
-            location_spot: spot || ('打卡 ' + city),
+            location_spot: '打卡 ' + city,
             time_slot: timeSlot,
             personality: personalityKey,
             emotion,
             summary,
             diaryId: diaryId || null,
             scene: scene || null,
+            scene_label: scene && scene.label ? scene.label : null,
             narration: summary,
             text: summary
         };
