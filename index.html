@@ -695,7 +695,7 @@
                     </h1>
                 </header>
                 <div id="pet-status-bar" class="mt-1 text-center text-xs font-bold text-gray-600">
-                    比卡丘正在准备出发中…
+                    比卡丘在准备出发～
                 </div>
                 <!-- 顶部信息区：人格 + 盲盒 + 可收起的称呼设置 -->
                 <div class="mt-1 flex flex-col items-center gap-1 w-full">
@@ -934,6 +934,7 @@
     let diarySeq = 0;
 
     // --- 2x2 人格矩阵配置 (IP Config) ---
+    // 比卡丘感：短句、口语、适度语气词（～、…、！）、陪伴感；四种性格保持差异，整体不书面、不冷淡。
     const PERSONALITY_TYPES = {
         '小火苗': {
             name: '小火苗',
@@ -949,12 +950,12 @@
             bubbleColor: '#ff9a9e',
             textColor: '#be185d',
             dialogues: [
-                "冲冲冲！下一个目的地是哪里？🔥",
-                "刚刚那只蝴蝶飞得好快，我要追上它！",
-                "快带我出去玩嘛！(跳来跳去)",
-                "只要和你在一起，去哪里都开心！✨"
+                "皮卡～冲冲冲！下一站去哪？🔥",
+                "刚才那只蝴蝶飞好快，我要追上它！",
+                "快带我出去玩嘛！",
+                "和你在一起去哪都开心！✨"
             ],
-            travelDialogue: "我超级喜欢【{location}】，太热闹了！",
+            travelDialogue: "【{location}】太热闹啦，超喜欢！",
             memorySnippets: [
                 "我总是第一个冲到门口，生怕错过任何一次出发。",
                 "看到地图上多出一个新小点点，我的心情就会亮一大截。",
@@ -975,12 +976,12 @@
             bubbleColor: '#fcd34d',
             textColor: '#b45309',
             dialogues: [
-                "根据我的计算，今天的湿度很适合出门。💡",
-                "正在分析刚才那个路标的设计逻辑...",
-                "我的电池充满电了。",
-                "效率第一，我们现在的路线是最优解吗？"
+                "今天湿度很适合出门～💡",
+                "那个路标设计我记下了！",
+                "电量满格～",
+                "这条路是最优解吗？"
             ],
-            travelDialogue: "【{location}】的建筑结构很有趣。",
+            travelDialogue: "【{location}】的建筑好有趣～",
             memorySnippets: [
                 "我总是会记下路牌和转角，哪怕下次不一定会用到。",
                 "每到一个新地方，我都会偷偷给它打分，然后存在脑子里的数据表格里。",
@@ -1001,12 +1002,12 @@
             bubbleColor: '#e9d5ff',
             textColor: '#7e22ce',
             dialogues: [
-                "今天的风好温柔啊...☁️",
-                "刚才路边的小花看起来有点孤单。",
-                "不想动...就在这里发呆好不好？",
-                "只要静静地陪着你就很好了。"
+                "今天的风好温柔啊…☁️",
+                "路边的小花有点孤单呢。",
+                "不想动…在这儿发呆好不好？",
+                "静静陪着你就很好啦。"
             ],
-            travelDialogue: "有点想念【{location}】的那片云。",
+            travelDialogue: "有点想念【{location}】的那片云～",
             memorySnippets: [
                 "有些风吹到脸上的时候，我会悄悄把那一阵风记下来。",
                 "我喜欢把今天看到的云换成小小的心情图案，放进脑海里。",
@@ -1027,12 +1028,12 @@
             bubbleColor: '#e5e7eb',
             textColor: '#374151',
             dialogues: [
-                "嗯...这里挺安静的。🪨",
-                "保持稳定，不要大惊小怪。",
-                "我在思考宇宙的尽头。",
-                "（默默地看着你）"
+                "嗯…这儿挺安静的。🪨",
+                "保持稳定，别大惊小怪～",
+                "在想宇宙的尽头。",
+                "（默默看着你）"
             ],
-            travelDialogue: "【{location}】...还行吧。",
+            travelDialogue: "【{location}】…还行吧。",
             memorySnippets: [
                 "我会把每一次落脚的位置记在心里，哪怕表面上看起来若无其事。",
                 "有些路走过一次，就足够存在记忆里很久。",
@@ -1747,26 +1748,26 @@
 
         switch (nextState) {
             case PET_STATES.IDLE_WAIT:
-                updatePetStatus('比卡丘正在伸懒腰准备出发…');
+                updatePetStatus('伸懒腰准备出发～');
                 playPetAnimation('idle_wait', { loop: false, frameInterval: 120, cycles: 2 });
                 schedulePetTransition(PET_STATES.IDLE_BREATH, 2800);
                 break;
             case PET_STATES.IDLE_BREATH:
-                updatePetStatus('比卡丘在安静地呼吸放空中');
+                updatePetStatus('比卡丘在发呆放空中…');
                 playPetAnimation('idle_breath', { loop: true, frameInterval: 130 });
                 break;
             case PET_STATES.IDLE_OBSERVE:
-                updatePetStatus('比卡丘好奇地盯着你看');
+                updatePetStatus('比卡丘在看着你哦～');
                 playPetAnimation('idle_observe', { loop: false, frameInterval: 120, cycles: 2 });
                 schedulePetTransition(PET_STATES.IDLE_BREATH, 4000);
                 break;
             case PET_STATES.INTERACT:
-                updatePetStatus('比卡丘正开心地和你互动');
+                updatePetStatus('比卡丘超开心！');
                 playPetAnimation('interact', { loop: false, frameInterval: 90, cycles: 2 });
                 schedulePetTransition(PET_STATES.IDLE_BREATH, 3200);
                 break;
             case PET_STATES.REST:
-                updatePetStatus('比卡丘蜷成一团睡着了…');
+                updatePetStatus('比卡丘睡着啦…');
                 playPetAnimation('rest', { loop: true, frameInterval: 150 });
                 break;
             default:
@@ -2973,10 +2974,10 @@
             const lastLocation = hasTraveled ? appState.locations[appState.locations.length - 1] : '';
 
             if (contextOverride) {
-                return `哇！${contextOverride}，太开心了！✨`;
+                return `哇～${contextOverride}，太开心啦！✨`;
             }
 
-            if (!pConfig) return '正在期待旅行... ✨';
+            if (!pConfig) return '在等和你一起去旅行～ ✨';
 
             // 优先检查是否有旅行相关的回忆对话
             if (hasTraveled && pConfig.travelDialogue && Math.random() > 0.6) {
@@ -2987,7 +2988,7 @@
             const dialogues = pConfig.dialogues || [];
             return dialogues.length > 0 
                 ? dialogues[Math.floor(Math.random() * dialogues.length)] 
-                : '正在期待旅行... ✨';
+                : '在等和你一起去旅行～ ✨';
         };
 
         const p = getCurrentPersonality();
@@ -3374,7 +3375,7 @@
             messages: [
                 {
                     role: 'system',
-                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”写旅行日记。语言轻松、有画面感，避免负面情绪和不当内容。不要出现“主人”一词，尽量少用“你”直接和读者对话。'
+                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”写旅行日记。整体语气可爱、治愈，像陪伴型电子宠物，短句为主，避免过于书面或成熟。语言轻松、有画面感，避免负面情绪和不当内容。不要出现“主人”一词，尽量少用“你”直接和读者对话。'
                 },
                 {
                     role: 'user',
@@ -3434,30 +3435,30 @@
         // 根据 2x2 人格 + 城市风格组合生成文案
         if (personality === '小火苗') {
             if (flavor) {
-                return `耶！今天我们解锁了【${location}】！在${h1}${h2 ? `，又一路蹦蹦跳跳跑到${h2}` : ''}，笑声差点把相机都晃糊了。${progressText}`;
+                return `耶！今天我们解锁了【${location}】！在${h1}${h2 ? `，又蹦蹦跳跳跑到${h2}` : ''}，笑声把相机都晃糊啦。${progressText}`;
             }
-            return `耶！今天我们来到了【${location}】！一路小跑着到处张望，感觉整座城市都在向我们打招呼。${progressText}`;
+            return `耶！今天来到【${location}】啦！一路小跑到处张望，整座城市都在跟我们打招呼～${progressText}`;
         }
 
         if (personality === '小灯泡') {
             if (flavor) {
-                return `抵达【${location}】啦！在${h1}${h2 ? `，又顺路观察了一下${h2}` : ''}，一路都在偷偷分析这里的设计逻辑。${progressText}`;
+                return `抵达【${location}】啦！在${h1}${h2 ? `，又顺路看了下${h2}` : ''}，一路偷偷记这里的设计～${progressText}`;
             }
-            return `抵达【${location}】啦！一路上我都在记路线、看路牌，感觉自己像一只小小导航仪。${progressText}`;
+            return `抵达【${location}】啦！一路记路线、看路牌，像一只小小导航仪～${progressText}`;
         }
 
         if (personality === '小云朵') {
             if (flavor) {
-                return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把今天的光和云都藏进小小的心里。${progressText}`;
+                return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把光和云都藏进心里啦。${progressText}`;
             }
-            return `风吹过【${location}】的街道，我慢慢走、慢慢看，只挑一两个瞬间悄悄收藏起来，等回去再和${ownerTitle}一起回味。${progressText}`;
+            return `风吹过【${location}】的街道，慢慢走、慢慢看，挑一两个瞬间悄悄收藏，等回去和${ownerTitle}一起回味～${progressText}`;
         }
 
         // 小石头及其他：更克制、冷静
         if (flavor) {
-            return `【${location}】还挺安静的。我在${h1}${h2 ? `，顺便看了看${h2}` : ''}，帮我们把今天的记忆都稳稳存好。${progressText}`;
+            return `【${location}】还挺安静的。在${h1}${h2 ? `，顺便看了看${h2}` : ''}，把今天的记忆稳稳存好啦。${progressText}`;
         }
-        return `今天把脚步落在了【${location}】。没什么夸张的场面，但一路走一路记，感觉记忆卡又多了一页。${progressText}`;
+        return `今天把脚步落在【${location}】啦。没什么夸张的场面，一路走一路记，记忆卡又多了一页～${progressText}`;
     }
 
     // --- 辅助函数：生成日记 ---
