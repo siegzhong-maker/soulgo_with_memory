@@ -689,10 +689,14 @@
         <!-- 顶部栏：标题 + 状态 + 性格，半透明便于底图透出 -->
         <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-3 flex-shrink-0">
             <div class="petroom-top-bar-inner inline-flex flex-col items-center gap-1 pointer-events-auto">
-                <header class="text-center">
-                    <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
+                <header class="w-full flex items-center justify-between gap-2">
+                    <div class="w-10 flex-shrink-0" aria-hidden="true"></div>
+                    <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2 flex-1 min-w-0">
                         <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
                     </h1>
+                    <button type="button" id="btn-memory" class="flex-shrink-0 w-10 h-10 rounded-full bg-[#a8d8ea] hover:bg-[#8ecae6] text-[#2d6a8a] flex items-center justify-center shadow-md transition-colors active:scale-95" title="宠物记忆" aria-label="打开宠物记忆">
+                        <i class="ph-fill ph-book-open text-lg"></i>
+                    </button>
                 </header>
                 <div id="pet-status-bar" class="mt-1 text-center text-xs font-bold text-gray-600">
                     比卡丘在准备出发～
@@ -923,10 +927,12 @@
         ownerTitle: '伙伴',
         // 每篇日记绑定的本地插图（仅前端存储）
         diaryImages: {},
-        // 宠物记忆：情景记忆（旅行打卡点）+ 语义记忆（个性描述）
+        // 宠物记忆：情景记忆（旅行打卡点）+ 语义记忆（个性描述）+ 人格设定 + 习惯总结
         memories: {
             episodic: [],
-            semantic: []
+            semantic: [],
+            semanticProfile: null,  // 单对象，人格设定（identity, preferences, speaking_style, call_user）
+            habit: []              // 习惯总结列表
         }
     };
 
@@ -3001,6 +3007,17 @@
 
             if (!pConfig) return '在等和你一起去旅行～ ✨';
 
+            // 一定概率使用记忆中的旁白作为气泡（体现记忆驱动互动）
+            const episodicTravel = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+            const episodicDaily = typeof getEpisodicDaily === 'function' ? getEpisodicDaily() : [];
+            const recentMemories = episodicTravel.slice(0, 2).concat(episodicDaily.slice(0, 1));
+            if (recentMemories.length > 0 && Math.random() < 0.25) {
+                const m = recentMemories[Math.floor(Math.random() * recentMemories.length)];
+                const line = (m.narration || m.text || '').trim();
+                if (line && line.length <= 80) return line;
+                if (line && line.length > 80) return line.slice(0, 77) + '…';
+            }
+
             // 优先检查是否有旅行相关的回忆对话
             if (hasTraveled && pConfig.travelDialogue && Math.random() > 0.6) {
                 return pConfig.travelDialogue.replace('{location}', lastLocation);
@@ -3367,6 +3384,16 @@
         const promptDesc = pConfig ? pConfig.promptDesc : '热情、可爱、治愈。';
         const ownerTitle = getOwnerTitle();
 
+        // 从记忆系统注入：人格设定 + 与当前地点相关的旅行记忆（供 LLM 体现「记得」）
+        const semanticProfile = typeof getSemanticProfileForDisplay === 'function' ? getSemanticProfileForDisplay() : null;
+        const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+        const relevantMemories = location ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0).slice(0, 2) : travelMemories.slice(0, 2);
+        const memoryBlock = [];
+        if (semanticProfile && semanticProfile.identity) memoryBlock.push('人格设定：' + semanticProfile.identity);
+        if (semanticProfile && semanticProfile.speaking_style && semanticProfile.speaking_style.description) memoryBlock.push('说话风格：' + semanticProfile.speaking_style.description);
+        relevantMemories.forEach((m) => { memoryBlock.push('旅行记忆：' + (m.narration || m.text || '')); });
+        const memoryText = memoryBlock.length > 0 ? '\n【宠物记忆（可参考以体现连贯）】\n' + memoryBlock.join('\n') : '';
+
         // 根据性格控制篇幅长短
         let lengthHint = '4. **篇幅**：80-150字左右，短小精悍，治愈风格。';
         if (pConfig && pConfig.wordiness === 'chatter') {
@@ -3383,6 +3410,7 @@
             `- 我对陪我旅行的人称呼：${ownerTitle}（不要使用“主人”一词）。`,
             `- 你的性格：${personality}`,
             `- 性格描述：${promptDesc}`,
+            memoryText,
             `\n【写作要求】`,
             `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**。`,
             `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
@@ -3586,7 +3614,7 @@
     // --- 宠物记忆：数据与渲染 ---
     function appendEpisodicMemory({ date, location, scene, diaryId }) {
         if (!appState.memories) {
-            appState.memories = { episodic: [], semantic: [] };
+            appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
         }
         const normalized = normalizeLocationName(location);
         const flavor = cityFlavorMap[normalized];
@@ -3602,6 +3630,7 @@
 
         const record = {
             type: 'episodic',
+            category: 'travel',
             date,
             location,
             scene: scene || null,
@@ -3626,85 +3655,297 @@
         }));
     }
 
+    /** 人格设定：用于记忆页「性格碎片」展示；优先 appState.memories.semanticProfile，否则从当前人格拼默认 */
+    function getSemanticProfileForDisplay() {
+        const profile = appState.memories && appState.memories.semanticProfile;
+        if (profile && (profile.identity || profile.preferences)) return profile;
+        const p = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        const ownerTitle = getOwnerTitle();
+        if (!p) return { identity: '', preferences: {}, speaking_style: {}, call_user: [ownerTitle] };
+        return {
+            identity: `我是一只皮卡丘，目标是成为旅行大师。`,
+            preferences: {
+                food: '我最爱的东西是番茄酱（Ketchup），看到都会眼睛发光。',
+                dislikes: '我不太喜欢被关进精灵球（Poké Ball），那样会觉得好闷。',
+                abilities: '我高兴的时候会忍不住放电，尾巴还能提前感到天气要变。'
+            },
+            speaking_style: {
+                description: `我说话喜欢加「Pika～」，看到熟悉的人会叫「${ownerTitle}」。`,
+                verbal_tics: ['Pika～', 'Pika pika～'],
+                call_user: [ownerTitle]
+            },
+            call_user: [ownerTitle],
+            tags: ['pikachu', 'travel_master', 'semantic_profile']
+        };
+    }
+
+    /** 情景记忆·旅行：episodic 且 category 为 travel 或未定义（兼容旧数据） */
+    function getEpisodicTravel() {
+        const list = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
+        return list.filter((m) => (m.category === 'travel' || m.category === undefined));
+    }
+
+    /** 情景记忆·日常：episodic 且 category 为 daily */
+    function getEpisodicDaily() {
+        const list = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
+        return list.filter((m) => m.category === 'daily');
+    }
+
+    /** 习惯总结列表 */
+    function getHabitMemories() {
+        return (appState.memories && appState.memories.habit) ? appState.memories.habit : [];
+    }
+
+    let currentMemoryTab = 'travel'; // 'travel' | 'character'
+
     function renderMemories() {
         if (!modalBody) return;
 
-        const episodic = (appState.memories && appState.memories.episodic) ? appState.memories.episodic.slice(0, 10) : [];
-        const semantic = buildSemanticMemories();
+        const travelList = getEpisodicTravel();
+        const dailyList = getEpisodicDaily();
+        const profile = getSemanticProfileForDisplay();
+        const habits = getHabitMemories();
 
-        const episodicCards = episodic.map((m) => {
-            const tag = m.location || '一次小小的出发';
-            const date = m.date || '';
-            const imgSrc = m.scene && m.scene.image ? m.scene.image : 'assets/cabinet-empty.svg';
-            return `
-                <div class="relative bg-[#1f2937]/80 rounded-2xl p-3 text-xs text-gray-100 shadow-md overflow-hidden">
-                    <div class="absolute -top-2 -left-2 w-16 h-16 opacity-10 pointer-events-none">
-                        <img src="${imgSrc}" alt="${tag}" class="w-full h-full object-cover">
-                    </div>
-                    <div class="relative flex items-center justify-between mb-1">
-                        <span class="text-[10px] font-bold text-[#fcd34d]">${date}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#111827] text-gray-300 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[#fbbf24]"></span>
-                            旅行记忆
-                        </span>
-                    </div>
-                    <div class="relative text-[11px] leading-relaxed text-gray-100">
-                        <span class="font-bold text-[#f9a8d4] mr-1">【${tag}】</span>${m.text}
-                    </div>
+        const countForTab = currentMemoryTab === 'travel' ? (travelList.length + dailyList.length) : ((profile && (profile.identity || (profile.preferences && Object.keys(profile.preferences).length > 0)) ? 1 : 0) + habits.length);
+        const countText = countForTab + ' 条记录';
+
+        const tabBarHTML = `
+            <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+                <div class="flex gap-4">
+                    <button type="button" id="memory-tab-travel" class="memory-tab text-sm font-bold pb-1 border-b-2 transition-colors ${currentMemoryTab === 'travel' ? 'text-teal-700 border-teal-600' : 'text-gray-400 border-transparent'}">旅行记忆</button>
+                    <button type="button" id="memory-tab-character" class="memory-tab text-sm font-bold pb-1 border-b-2 transition-colors ${currentMemoryTab === 'character' ? 'text-teal-700 border-teal-600' : 'text-gray-400 border-transparent'}">性格碎片</button>
                 </div>
-            `;
-        }).join('');
-
-        const semanticCards = semantic.map((m) => `
-            <div class="relative bg-[#020617]/80 rounded-2xl p-3 text-xs text-gray-100 shadow-md">
-                <div class="absolute -top-2 right-4 px-2 py-0.5 rounded-full bg-[#111827] text-[10px] font-bold text-[#a5b4fc]">
-                    Q&A 气泡记忆
-                </div>
-                <div class="relative mt-2 text-[11px] leading-relaxed">
-                    ${m.text}
-                </div>
-            </div>
-        `).join('');
-
-        const emptyHint = (!episodic.length && !semantic.length)
-            ? '<p class="text-center text-[11px] text-gray-500 py-3">还没有专属记忆，带我去打卡一两个地方试试吧。</p>'
-            : '';
-
-        const bodyHTML = `
-            <div class="flex flex-col gap-3 text-xs">
-                ${emptyHint}
-                ${episodic.length ? `
-                <section class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[11px] font-bold text-gray-700">最近的旅行记忆</span>
-                        <span class="text-[10px] text-gray-400">最多展示最近 10 条</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        ${episodicCards}
-                    </div>
-                </section>
-                ` : ''}
-                ${semantic.length ? `
-                <section class="space-y-2">
-                    <div class="flex items-center justify-between mt-1">
-                        <span class="text-[11px] font-bold text-gray-700">关于我的小设定</span>
-                        <span class="text-[10px] text-gray-400">和性格挂钩的语义记忆</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        ${semanticCards}
-                    </div>
-                </section>
-                ` : ''}
+                <span class="text-xs text-gray-400">${countText}</span>
             </div>
         `;
 
+        function makeEpisodicCard(m, isDaily, episodicIndex) {
+            const title = isDaily ? (m.source_event ? String(m.source_event).replace(/_/g, ' ') : '日常') : (m.location_spot || ('打卡 ' + (m.location_city || m.location || '温馨小屋')));
+            const date = m.date || '';
+            const narration = m.narration || m.text || '';
+            const habitInf = m.habit_inference || '';
+            const emotion = m.emotion || '';
+            const emotionClass = emotion === 'tender' ? 'bg-pink-100 text-pink-800' : emotion === 'nostalgic' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800';
+            const idx = episodicIndex != null ? episodicIndex : -1;
+            return `
+                <div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative" data-memory-type="episodic" data-episodic-index="${idx}">
+                    <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
+                    <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
+                    <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(date)}</div>
+                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''}</div>
+                    <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(narration)}</div>
+                    ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
+                    ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
+                </div>
+            `;
+        }
+
+        const episodic = appState.memories.episodic || [];
+        const travelCardsWithIndex = [];
+        const dailyCardsWithIndex = [];
+        episodic.forEach((m, i) => {
+            if (m.category === 'daily') dailyCardsWithIndex.push({ m, i });
+            else travelCardsWithIndex.push({ m, i });
+        });
+        const travelCardsHTML = currentMemoryTab === 'travel' && (travelCardsWithIndex.length > 0 || dailyCardsWithIndex.length > 0)
+            ? '<div class="flex flex-col gap-2">' + travelCardsWithIndex.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + dailyCardsWithIndex.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div>'
+            : '';
+        const travelEmptyHTML = (currentMemoryTab === 'travel' && travelCardsWithIndex.length === 0 && dailyCardsWithIndex.length === 0)
+            ? '<p class="text-center text-xs text-gray-500 py-4">我还没有记下这类呢，带我去打卡一两个地方试试吧。</p>'
+            : '';
+
+        const identityBlock = (profile && (profile.identity || (profile.preferences && Object.keys(profile.preferences).length > 0))) ? `
+            <div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative mb-2" data-memory-type="semanticProfile">
+                <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
+                <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
+                <div class="text-[10px] text-gray-400 mb-1">人格设定</div>
+                ${profile.identity ? '<div class="text-xs text-gray-700 mb-2">' + escapeHtml(profile.identity) + '</div>' : ''}
+                ${(profile.preferences && (profile.preferences.food || profile.preferences.dislikes || profile.preferences.abilities)) ? '<div class="text-[11px] text-gray-600 space-y-1">' + (profile.preferences.food ? '<div>喜好：' + escapeHtml(profile.preferences.food) + '</div>' : '') + (profile.preferences.dislikes ? '<div>不喜欢：' + escapeHtml(profile.preferences.dislikes) + '</div>' : '') + (profile.preferences.abilities ? '<div>能力：' + escapeHtml(profile.preferences.abilities) + '</div>' : '') + '</div>' : ''}
+                ${(profile.speaking_style && profile.speaking_style.description) ? '<div class="text-[11px] text-gray-500 mt-2">' + escapeHtml(profile.speaking_style.description) + '</div>' : ''}
+                ${(profile.call_user && profile.call_user.length) ? '<div class="text-[10px] text-gray-400 mt-1">称呼你：' + escapeHtml(profile.call_user.join('、')) + '</div>' : ''}
+            </div>
+        ` : '';
+
+        const habitCardsHTML = (currentMemoryTab === 'character' && habits.length > 0) ? habits.map((h, idx) =>
+            '<div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative" data-memory-type="habit" data-habit-index="' + idx + '"><button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button><div class="text-[10px] text-gray-400 mb-1">' + escapeHtml(h.generated_at || '') + '</div><div class="text-xs text-gray-700 leading-relaxed">' + escapeHtml(h.summary || '') + '</div></div>'
+        ).join('') : '';
+
+        const characterEmptyHTML = (currentMemoryTab === 'character' && !(profile && profile.identity) && habits.length === 0) ? '<p class="text-center text-xs text-gray-500 py-4">我还没有记下这类呢。</p>' : '';
+
+        const travelPanelHTML = currentMemoryTab === 'travel' ? (travelCardsHTML || travelEmptyHTML) : '';
+        const characterPanelHTML = currentMemoryTab === 'character' ? (identityBlock + habitCardsHTML + (characterEmptyHTML && !identityBlock && !habitCardsHTML ? characterEmptyHTML : '')) : '';
+
+        const bodyHTML = '<div class="flex flex-col gap-0 text-xs memory-modal-content">' + tabBarHTML + '<div id="memory-tab-content" class="overflow-y-auto flex-1 min-h-0">' + travelPanelHTML + characterPanelHTML + '</div></div>';
+
         modalBody.innerHTML = bodyHTML;
+
+        const tabTravel = document.getElementById('memory-tab-travel');
+        const tabCharacter = document.getElementById('memory-tab-character');
+        if (tabTravel) tabTravel.addEventListener('click', function () { currentMemoryTab = 'travel'; renderMemories(); });
+        if (tabCharacter) tabCharacter.addEventListener('click', function () { currentMemoryTab = 'character'; renderMemories(); });
+
+        modalBody.querySelectorAll('.memory-edit-btn').forEach((btn) => {
+            const card = btn.closest('[data-memory-type]');
+            if (!card) return;
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const type = card.getAttribute('data-memory-type');
+                if (type === 'episodic') { openMemoryEditForm('episodic', parseInt(card.getAttribute('data-episodic-index'), 10)); }
+                else if (type === 'semanticProfile') { openMemoryEditForm('semanticProfile', null); }
+                else if (type === 'habit') { openMemoryEditForm('habit', parseInt(card.getAttribute('data-habit-index'), 10)); }
+            });
+        });
+    }
+
+    function openMemoryEditForm(type, index) {
+        if (!modalTitle || !modalBody) return;
+        const ownerTitle = getOwnerTitle();
+        if (type === 'episodic' && index >= 0 && appState.memories && appState.memories.episodic && appState.memories.episodic[index]) {
+            const m = appState.memories.episodic[index];
+            const title = m.location_spot || m.location_city || m.location || '';
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>标题/地点 <input type="text" id="edit-episodic-title" class="w-full border rounded px-2 py-1" value="${escapeHtml(title)}" placeholder="如：打卡 温馨小屋"></label>
+                    <label>日期 <input type="text" id="edit-episodic-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.date || '')}" placeholder="YYYY-MM-DD"></label>
+                    <label>旁白（第一人称） <textarea id="edit-episodic-narration" class="w-full border rounded px-2 py-1 h-20" placeholder="我…">${escapeHtml(m.narration || m.text || '')}</textarea></label>
+                    <label>习惯推断（可选） <textarea id="edit-episodic-habit" class="w-full border rounded px-2 py-1 h-16" placeholder="我发现你…">${escapeHtml(m.habit_inference || '')}</textarea></label>
+                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="excited / tender / nostalgic"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const titleVal = (document.getElementById('edit-episodic-title') || {}).value || '';
+                const dateVal = (document.getElementById('edit-episodic-date') || {}).value || '';
+                const narrVal = (document.getElementById('edit-episodic-narration') || {}).value || '';
+                const habitVal = (document.getElementById('edit-episodic-habit') || {}).value || '';
+                const emotionVal = (document.getElementById('edit-episodic-emotion') || {}).value || '';
+                if (!narrVal.trim()) return;
+                const rec = appState.memories.episodic[index];
+                if (rec.category === 'daily') { rec.source_event = titleVal || rec.source_event; } else { rec.location_spot = titleVal || rec.location_spot; rec.location_city = titleVal || rec.location_city; rec.location = titleVal || rec.location; }
+                rec.date = dateVal || rec.date;
+                rec.narration = narrVal; rec.text = narrVal;
+                rec.habit_inference = habitVal;
+                rec.emotion = emotionVal || undefined;
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+            return;
+        }
+        if (type === 'semanticProfile' && appState.memories && appState.memories.semanticProfile) {
+            const p = appState.memories.semanticProfile;
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>身份（我…） <textarea id="edit-semantic-identity" class="w-full border rounded px-2 py-1 h-16">${escapeHtml(p.identity || '')}</textarea></label>
+                    <label>喜好（食物等） <input type="text" id="edit-semantic-food" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.food) || '')}"></label>
+                    <label>不喜欢 <input type="text" id="edit-semantic-dislikes" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.dislikes) || '')}"></label>
+                    <label>能力 <input type="text" id="edit-semantic-abilities" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.abilities) || '')}"></label>
+                    <label>说话风格描述 <input type="text" id="edit-semantic-desc" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.speaking_style && p.speaking_style.description) || '')}"></label>
+                    <label>称呼你（逗号分隔） <input type="text" id="edit-semantic-call" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.call_user && p.call_user.join) ? p.call_user.join('、') : '')}" placeholder="${escapeHtml(ownerTitle)}"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const identityVal = (document.getElementById('edit-semantic-identity') || {}).value || '';
+                const foodVal = (document.getElementById('edit-semantic-food') || {}).value || '';
+                const dislikesVal = (document.getElementById('edit-semantic-dislikes') || {}).value || '';
+                const abilitiesVal = (document.getElementById('edit-semantic-abilities') || {}).value || '';
+                const descVal = (document.getElementById('edit-semantic-desc') || {}).value || '';
+                const callVal = (document.getElementById('edit-semantic-call') || {}).value || '';
+                appState.memories.semanticProfile.identity = identityVal;
+                appState.memories.semanticProfile.preferences = appState.memories.semanticProfile.preferences || {};
+                appState.memories.semanticProfile.preferences.food = foodVal;
+                appState.memories.semanticProfile.preferences.dislikes = dislikesVal;
+                appState.memories.semanticProfile.preferences.abilities = abilitiesVal;
+                appState.memories.semanticProfile.speaking_style = appState.memories.semanticProfile.speaking_style || {};
+                appState.memories.semanticProfile.speaking_style.description = descVal;
+                appState.memories.semanticProfile.call_user = callVal ? callVal.split(/[、,]/).map((s) => s.trim()).filter(Boolean) : [ownerTitle];
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+            return;
+        }
+        if (type === 'habit' && index >= 0 && appState.memories && appState.memories.habit && appState.memories.habit[index]) {
+            const h = appState.memories.habit[index];
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>总结（宠物视角） <textarea id="edit-habit-summary" class="w-full border rounded px-2 py-1 h-24">${escapeHtml(h.summary || '')}</textarea></label>
+                    <label>生成时间 <input type="text" id="edit-habit-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(h.generated_at || '')}" placeholder="YYYY-MM-DD"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const summaryVal = (document.getElementById('edit-habit-summary') || {}).value || '';
+                const dateVal = (document.getElementById('edit-habit-date') || {}).value || '';
+                appState.memories.habit[index].summary = summaryVal;
+                appState.memories.habit[index].generated_at = dateVal || appState.memories.habit[index].generated_at;
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+        }
     }
 
     function openMemoryModal() {
+        ensureMemorySeeds();
         const placeholder = '<div></div>'; // 内容由 renderMemories 注入
         openModal('宠物记忆', placeholder, 'default');
         renderMemories();
+    }
+
+    /** 种子数据：仅在为空时写入，保证两 Tab 均有示例内容 */
+    function ensureMemorySeeds() {
+        if (!appState.memories) appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
+        const ownerTitle = getOwnerTitle();
+        if (!appState.memories.semanticProfile || !appState.memories.semanticProfile.identity) {
+            appState.memories.semanticProfile = {
+                identity: '我是一只皮卡丘，目标是成为旅行大师。',
+                preferences: {
+                    food: '我最爱的东西是番茄酱（Ketchup），看到都会眼睛发光。',
+                    dislikes: '我不太喜欢被关进精灵球（Poké Ball），那样会觉得好闷。',
+                    abilities: '我高兴的时候会忍不住放电，尾巴还能提前感到天气要变。'
+                },
+                speaking_style: {
+                    description: '我说话喜欢加「Pika～」，看到熟悉的人会叫「' + ownerTitle + '」。',
+                    verbal_tics: ['Pika～', 'Pika pika～'],
+                    call_user: [ownerTitle]
+                },
+                call_user: [ownerTitle],
+                tags: ['pikachu', 'travel_master', 'semantic_profile']
+            };
+        }
+        const episodic = appState.memories.episodic || [];
+        const hasTravel = episodic.some((m) => m.category === 'travel' || m.category === undefined);
+        if (!hasTravel) {
+            appState.memories.episodic = [
+                { type: 'episodic', category: 'travel', date: '2026-2-28', location_city: '温馨小屋', location_spot: '打卡 温馨小屋', narration: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。', habit_inference: '', emotion: 'excited', is_seed: true },
+                { type: 'episodic', category: 'travel', date: '2026-2-27', location: '杭州', location_city: '杭州', location_spot: '开往海边的高铁', narration: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～', habit_inference: '我发现你在离开一座城市的时候，总会撑着不睡，所以我都会多看几眼窗外，把那一路都记下来。', emotion: 'tender', is_seed: true }
+            ].concat(episodic);
+        }
+        const episodicNow = appState.memories.episodic || [];
+        const hasDaily = episodicNow.some((m) => m.category === 'daily');
+        if (!hasDaily) {
+            appState.memories.episodic = episodicNow.concat([
+                { type: 'episodic', category: 'daily', date: '2026-2-28', time_slot: 'evening', source_event: 'open_memory_page', narration: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。', habit_inference: '我好像也养成了一个习惯：只要深夜看到屏幕亮起，我就会先把最暖的那几段旅程翻到手边。', is_critical: true }
+            ]);
+        }
+        const habit = appState.memories.habit || [];
+        if (habit.length === 0) {
+            appState.memories.habit = [{ generated_at: '2026-2-28', summary: '这阵子你大多在 23:00–01:00 找我，我也习惯在那个时间把旅行记忆放到首页，方便你一进来就看到。', metrics: {}, tags: ['night', 'travel_focus'] }];
+        }
     }
 
     function renderCabinetGrid() {
