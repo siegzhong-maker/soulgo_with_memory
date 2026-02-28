@@ -2638,7 +2638,7 @@
             }
 
             // 2. 生成日记（使用本次实际掉落的 scene）
-            const diaryMeta = generateDiaryEntry(location, diaryText, scene);
+            const diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint);
 
             // 2.5 生成一条情景记忆
             if (diaryMeta && diaryMeta.diaryId) {
@@ -2646,8 +2646,7 @@
                     date: diaryMeta.date,
                     location,
                     scene,
-                    diaryId: String(diaryMeta.diaryId),
-                    diaryText
+                    diaryId: String(diaryMeta.diaryId)
                 });
             }
 
@@ -3396,11 +3395,21 @@
         // 从记忆系统注入：人格设定 + 与当前地点相关的旅行记忆（供 LLM 体现「记得」）
         const semanticProfile = typeof getSemanticProfileForDisplay === 'function' ? getSemanticProfileForDisplay() : null;
         const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
-        const relevantMemories = location ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0).slice(0, 2) : travelMemories.slice(0, 2);
+        const relevantMemories = location
+            ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0).slice(0, 2)
+            : travelMemories.slice(0, 2);
         const memoryBlock = [];
         if (semanticProfile && semanticProfile.identity) memoryBlock.push('人格设定：' + semanticProfile.identity);
         if (semanticProfile && semanticProfile.speaking_style && semanticProfile.speaking_style.description) memoryBlock.push('说话风格：' + semanticProfile.speaking_style.description);
-        relevantMemories.forEach((m) => { memoryBlock.push('旅行记忆：' + (m.narration || m.text || '')); });
+        relevantMemories.forEach((m) => {
+            const dateStr = m.date || '';
+            const cityLabel = m.location_city || m.location || '';
+            const timeLabel = typeof formatTimeSlotLabel === 'function' ? formatTimeSlotLabel(m.time_slot) : '';
+            const summary = m.summary || m.narration || m.text || '';
+            const prefix = [dateStr, cityLabel, timeLabel].filter(Boolean).join(' ');
+            const line = prefix ? `${prefix} —— ${summary}` : summary;
+            if (line) memoryBlock.push('旅行记忆：' + line);
+        });
         const memoryText = memoryBlock.length > 0 ? '\n【宠物记忆（可参考以体现连贯）】\n' + memoryBlock.join('\n') : '';
 
         // 根据性格控制篇幅长短
@@ -3523,7 +3532,7 @@
     }
 
     // --- 辅助函数：生成日记 ---
-    function generateDiaryEntry(location, content, sceneOverride) {
+    function generateDiaryEntry(location, content, sceneOverride, memoryCount) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
         const personality = appState.petPersonality;
         const personalityConfig = PERSONALITY_TYPES[personality] || null;
@@ -3539,6 +3548,10 @@
             ? content.trim()
             : buildDiaryText(location, personality);
 
+        const memoryHint = typeof memoryCount === 'number' && memoryCount > 0
+            ? `<div class="mt-1 text-[10px] text-gray-400">本篇参考了 ${memoryCount} 条旅行记忆</div>`
+            : '';
+
         const sceneImageBlock = scene ? `
             <img src="${scene.image}" alt="${scene.label}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm mb-2">
         ` : '';
@@ -3549,6 +3562,7 @@
                     <span class="text-xs font-bold text-white bg-[#cdb4db] px-2 py-1 rounded-md">${date}</span>
                     <span class="text-xs text-gray-500 font-bold"><i class="ph-fill ph-map-pin text-[#ff8fab]"></i> ${location}</span>
                 </div>
+                ${memoryHint}
                 <div class="flex gap-3">
                     <div class="flex flex-col items-center">
                         ${sceneImageBlock}
@@ -3622,37 +3636,84 @@
         });
     }
 
+    function getCurrentTimeSlot() {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return 'morning';
+        if (hour >= 12 && hour < 18) return 'afternoon';
+        if (hour >= 18 && hour < 23) return 'evening';
+        return 'night';
+    }
+
+    function formatTimeSlotLabel(timeSlot) {
+        const map = {
+            morning: '早上',
+            afternoon: '下午',
+            evening: '晚上',
+            night: '深夜'
+        };
+        return map[timeSlot] || '';
+    }
+
+    function buildEpisodicSummary({ city, spot, timeSlot, personalityKey }) {
+        const timeLabel = formatTimeSlotLabel(timeSlot);
+        const place = spot || city || '这里';
+
+        let emotion = 'calm';
+        let summary = '';
+
+        const p = personalityKey || appState.petPersonality || '小火苗';
+
+        if (p === '小火苗') {
+            emotion = 'excited';
+            summary = `${timeLabel}在${place}一路蹦蹦跳跳，差点把照片都晃糊了。`;
+        } else if (p === '小云朵') {
+            emotion = 'tender';
+            summary = `${timeLabel}在${place}慢慢走慢慢看，把安静的风景都藏进心里。`;
+        } else if (p === '小灯泡') {
+            emotion = 'curious';
+            summary = `${timeLabel}在${place}到处张望，记下好多细节准备回去慢慢研究。`;
+        } else {
+            emotion = 'nostalgic';
+            summary = `${timeLabel}在${place}走得不快不慢，像是给这条路盖了一个小小的纪念章。`;
+        }
+
+        return { summary, emotion };
+    }
+
     // --- 宠物记忆：数据与渲染 ---
-    function appendEpisodicMemory({ date, location, scene, diaryId, diaryText }) {
+    function appendEpisodicMemory({ date, location, scene, diaryId }) {
         if (!appState.memories) {
             appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
         }
         const normalized = normalizeLocationName(location);
         const flavor = cityFlavorMap[normalized];
-        const ownerTitle = getOwnerTitle();
+        const city = normalized || location || '未知地点';
+        const timeSlot = getCurrentTimeSlot();
+        const personalityKey = appState.petPersonality || '小火苗';
 
-        let snippet = '';
-        if (diaryText && typeof diaryText === 'string' && diaryText.trim()) {
-            const raw = diaryText.trim();
-            snippet = raw.length > 200 ? raw.slice(0, 200) + '…' : raw;
-        } else {
-            if (flavor && flavor.highlights && flavor.highlights.length) {
-                const spot = flavor.highlights[0];
-                snippet = `那天在${location}的${spot}停了一小会儿，我悄悄把那个画面夹进了记忆卡里。`;
-            } else {
-                snippet = `在【${location}】落下脚步的那一刻，我在心里按下了一次小小的保存键，准备以后和${ownerTitle}慢慢回看。`;
-            }
-        }
+        let spot = '';
+        if (scene && scene.label) spot = scene.label;
+        else if (flavor && flavor.highlights && flavor.highlights.length) spot = flavor.highlights[0];
+
+        const summaryInfo = buildEpisodicSummary({ city, spot, timeSlot, personalityKey });
+        const summary = summaryInfo.summary;
+        const emotion = summaryInfo.emotion;
 
         const record = {
             type: 'episodic',
             category: 'travel',
             date,
             location,
-            scene: scene || null,
+            location_city: city,
+            location_spot: spot || ('打卡 ' + city),
+            time_slot: timeSlot,
+            personality: personalityKey,
+            emotion,
+            summary,
             diaryId: diaryId || null,
-            text: snippet,
-            narration: snippet
+            scene: scene || null,
+            narration: summary,
+            text: summary
         };
 
         appState.memories.episodic = appState.memories.episodic || [];
@@ -3739,18 +3800,25 @@
         function makeEpisodicCard(m, isDaily, episodicIndex) {
             const title = isDaily ? (m.source_event ? String(m.source_event).replace(/_/g, ' ') : '日常') : (m.location_spot || ('打卡 ' + (m.location_city || m.location || '温馨小屋')));
             const date = m.date || '';
-            const narration = m.narration || m.text || '';
+            const timeLabel = formatTimeSlotLabel(m.time_slot);
+            const metaLine = timeLabel ? `${date} · ${timeLabel}` : date;
+            const summary = m.summary || m.narration || m.text || '';
             const habitInf = m.habit_inference || '';
             const emotion = m.emotion || '';
-            const emotionClass = emotion === 'tender' ? 'bg-pink-100 text-pink-800' : emotion === 'nostalgic' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800';
+            let emotionClass = 'bg-amber-100 text-amber-800';
+            if (emotion === 'tender') emotionClass = 'bg-pink-100 text-pink-800';
+            else if (emotion === 'nostalgic') emotionClass = 'bg-purple-100 text-purple-800';
+            else if (emotion === 'excited') emotionClass = 'bg-orange-100 text-orange-800';
+            else if (emotion === 'calm') emotionClass = 'bg-sky-100 text-sky-800';
+            else if (emotion === 'curious') emotionClass = 'bg-emerald-100 text-emerald-800';
             const idx = episodicIndex != null ? episodicIndex : -1;
             return `
                 <div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative" data-memory-type="episodic" data-episodic-index="${idx}">
                     <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
                     <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
-                    <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(date)}</div>
+                    <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(metaLine)}</div>
                     <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''}</div>
-                    <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(narration)}</div>
+                    <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(summary)}</div>
                     ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
                     ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
                 </div>
@@ -3819,15 +3887,15 @@
         const ownerTitle = getOwnerTitle();
         if (type === 'episodic' && index >= 0 && appState.memories && appState.memories.episodic && appState.memories.episodic[index]) {
             const m = appState.memories.episodic[index];
-            const title = m.location_spot || m.location_city || m.location || '';
+            const title = m.location_spot || m.location_city || m.location || (m.source_event || '');
             modalTitle.textContent = '编辑记忆';
             modalBody.innerHTML = `
                 <div class="flex flex-col gap-2 text-xs">
                     <label>标题/地点 <input type="text" id="edit-episodic-title" class="w-full border rounded px-2 py-1" value="${escapeHtml(title)}" placeholder="如：打卡 温馨小屋"></label>
                     <label>日期 <input type="text" id="edit-episodic-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.date || '')}" placeholder="YYYY-MM-DD"></label>
-                    <label>旁白（第一人称） <textarea id="edit-episodic-narration" class="w-full border rounded px-2 py-1 h-20" placeholder="我…">${escapeHtml(m.narration || m.text || '')}</textarea></label>
+                    <label>记忆摘要（第一人称，1 句为主） <textarea id="edit-episodic-narration" class="w-full border rounded px-2 py-1 h-20" placeholder="我…">${escapeHtml(m.summary || m.narration || m.text || '')}</textarea></label>
                     <label>习惯推断（可选） <textarea id="edit-episodic-habit" class="w-full border rounded px-2 py-1 h-16" placeholder="我发现你…">${escapeHtml(m.habit_inference || '')}</textarea></label>
-                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="excited / tender / nostalgic"></label>
+                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="excited / tender / nostalgic / calm / curious"></label>
                     <div class="flex gap-2 mt-2">
                         <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
                         <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
@@ -3842,9 +3910,17 @@
                 const emotionVal = (document.getElementById('edit-episodic-emotion') || {}).value || '';
                 if (!narrVal.trim()) return;
                 const rec = appState.memories.episodic[index];
-                if (rec.category === 'daily') { rec.source_event = titleVal || rec.source_event; } else { rec.location_spot = titleVal || rec.location_spot; rec.location_city = titleVal || rec.location_city; rec.location = titleVal || rec.location; }
+                if (rec.category === 'daily') {
+                    rec.source_event = titleVal || rec.source_event;
+                } else {
+                    rec.location_spot = titleVal || rec.location_spot;
+                    rec.location_city = titleVal || rec.location_city;
+                    rec.location = titleVal || rec.location;
+                }
                 rec.date = dateVal || rec.date;
-                rec.narration = narrVal; rec.text = narrVal;
+                rec.summary = narrVal;
+                rec.narration = narrVal;
+                rec.text = narrVal;
                 rec.habit_inference = habitVal;
                 rec.emotion = emotionVal || undefined;
                 modalTitle.textContent = '宠物记忆';
@@ -3947,16 +4023,59 @@
         const episodic = appState.memories.episodic || [];
         const hasTravel = episodic.some((m) => m.category === 'travel' || m.category === undefined);
         if (!hasTravel) {
+            const personalityKey = appState.petPersonality || '小火苗';
             appState.memories.episodic = [
-                { type: 'episodic', category: 'travel', date: '2026-2-28', location_city: '温馨小屋', location_spot: '打卡 温馨小屋', narration: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。', habit_inference: '', emotion: 'excited', is_seed: true },
-                { type: 'episodic', category: 'travel', date: '2026-2-27', location: '杭州', location_city: '杭州', location_spot: '开往海边的高铁', narration: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～', habit_inference: '我发现你在离开一座城市的时候，总会撑着不睡，所以我都会多看几眼窗外，把那一路都记下来。', emotion: 'tender', is_seed: true }
+                {
+                    type: 'episodic',
+                    category: 'travel',
+                    date: '2026-2-28',
+                    location_city: '温馨小屋',
+                    location_spot: '打卡 温馨小屋',
+                    time_slot: 'afternoon',
+                    personality: personalityKey,
+                    summary: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    narration: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    text: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    habit_inference: '',
+                    emotion: 'excited',
+                    is_seed: true
+                },
+                {
+                    type: 'episodic',
+                    category: 'travel',
+                    date: '2026-2-27',
+                    location: '杭州',
+                    location_city: '杭州',
+                    location_spot: '开往海边的高铁',
+                    time_slot: 'afternoon',
+                    personality: personalityKey,
+                    summary: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开，整趟路都不舍得眨眼。',
+                    narration: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～',
+                    text: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～',
+                    habit_inference: '我发现你在离开一座城市的时候，总会撑着不睡，所以我都会多看几眼窗外，把那一路都记下来。',
+                    emotion: 'tender',
+                    is_seed: true
+                }
             ].concat(episodic);
         }
         const episodicNow = appState.memories.episodic || [];
         const hasDaily = episodicNow.some((m) => m.category === 'daily');
         if (!hasDaily) {
+            const personalityKeyForDaily = appState.petPersonality || '小火苗';
             appState.memories.episodic = episodicNow.concat([
-                { type: 'episodic', category: 'daily', date: '2026-2-28', time_slot: 'evening', source_event: 'open_memory_page', narration: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。', habit_inference: '我好像也养成了一个习惯：只要深夜看到屏幕亮起，我就会先把最暖的那几段旅程翻到手边。', is_critical: true }
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-28',
+                    time_slot: 'evening',
+                    source_event: 'open_memory_page',
+                    personality: personalityKeyForDaily,
+                    summary: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    narration: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    text: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    habit_inference: '我好像也养成了一个习惯：只要深夜看到屏幕亮起，我就会先把最暖的那几段旅程翻到手边。',
+                    is_critical: true
+                }
             ]);
         }
         const habit = appState.memories.habit || [];
