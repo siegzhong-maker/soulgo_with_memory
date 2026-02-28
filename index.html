@@ -620,9 +620,67 @@
             overflow: hidden;
             max-width: 100%;
         }
+
+        /* ===== 横屏 iPad 模式（由 body.layout-landscape 触发） ===== */
+        body.layout-landscape #app-container {
+            max-width: 1024px;
+            max-height: 768px;
+            width: 90vw;
+            height: 85vh;
+            border-radius: 24px;
+            border: 12px solid #1a1a1a;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+        }
+        body.layout-landscape #app-container::after {
+            content: '';
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 4px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+
+        /* 地图页横屏：上下排布（地图在上，打卡面板在下） */
+        body.layout-landscape #view-home {
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+        }
+        body.layout-landscape #view-home header {
+            width: 100%;
+            margin-bottom: 0;
+            padding-top: 0;
+        }
+        body.layout-landscape #view-home #china-map-container {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+        }
+        body.layout-landscape #view-home #scene-preview {
+            flex-shrink: 0;
+        }
+        body.layout-landscape #view-home .checkin-panel-wrap {
+            flex-shrink: 0;
+        }
+
+        /* 弹窗横屏：限制最大宽度，避免过宽 */
+        body.layout-landscape #modal-panel {
+            max-width: 520px;
+        }
     </style>
 </head>
 <body>
+
+<!-- 竖屏/横屏切换按钮（固定在视口右上角） -->
+<button id="layout-toggle" type="button" class="fixed top-4 right-4 z-[100] flex items-center gap-2 px-3 py-2 rounded-xl bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl hover:bg-white transition-all text-sm font-bold text-gray-700 active:scale-95" title="切换竖屏/横屏" aria-label="切换竖屏/横屏">
+    <i class="ph ph-device-mobile text-lg text-[#ff8fab]"></i>
+    <span id="layout-toggle-label">横屏</span>
+</button>
 
 <div id="app-container">
     <!-- 内容槽：两个 Tab 共用同一高度，互不挤压 -->
@@ -663,24 +721,24 @@
             <!-- 由 JS 在打卡特定地点后填充卡片内容 -->
         </div>
 
-        <!-- 打卡控制面板 -->
-        <div class="glass-card rounded-3xl p-5 min-w-0 overflow-hidden flex-shrink-0">
-            <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
-                <i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 记录新旅程
-            </h3>
-            <div class="flex gap-2 min-w-0">
-                <input type="text" id="location-input" placeholder="输入地点，如：武汉" class="flex-1 min-w-0 bg-white border-2 border-transparent focus:border-[#ff8fab] rounded-2xl px-4 py-3 outline-none shadow-sm text-gray-700 transition-all">
-                <button id="btn-checkin" class="flex-shrink-0 bg-[#ff8fab] hover:bg-[#ff7b9c] text-white font-bold rounded-2xl px-4 py-3 transition-colors shadow-md whitespace-nowrap text-sm">
-                    去打卡
+        <!-- 打卡面板 + 返回按钮（横屏时作为右侧栏） -->
+        <div class="checkin-panel-wrap flex flex-col gap-4 flex-shrink-0">
+            <div class="glass-card rounded-3xl p-5 min-w-0 overflow-hidden">
+                <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
+                    <i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 记录新旅程
+                </h3>
+                <div class="flex gap-2 min-w-0">
+                    <input type="text" id="location-input" placeholder="输入地点，如：武汉" class="flex-1 min-w-0 bg-white border-2 border-transparent focus:border-[#ff8fab] rounded-2xl px-4 py-3 outline-none shadow-sm text-gray-700 transition-all">
+                    <button id="btn-checkin" class="flex-shrink-0 bg-[#ff8fab] hover:bg-[#ff7b9c] text-white font-bold rounded-2xl px-4 py-3 transition-colors shadow-md whitespace-nowrap text-sm">
+                        去打卡
+                    </button>
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <button id="btn-back-petroom" class="px-4 py-2 rounded-full text-xs font-bold text-gray-700 bg-white/90 border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition">
+                    返回宠物小屋
                 </button>
             </div>
-        </div>
-
-        <!-- 返回宠物小屋 -->
-        <div class="mt-4 flex justify-center">
-            <button id="btn-back-petroom" class="px-4 py-2 rounded-full text-xs font-bold text-gray-700 bg-white/90 border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition">
-                返回宠物小屋
-            </button>
         </div>
     </div>
 
@@ -917,6 +975,30 @@
 </div>
 
 <script>
+    // --- 竖屏/横屏布局切换 ---
+    const LAYOUT_KEY = 'soulgo_layout_mode';
+    const layoutToggle = document.getElementById('layout-toggle');
+    const layoutLabel = document.getElementById('layout-toggle-label');
+
+    function getLayoutMode() {
+        return localStorage.getItem(LAYOUT_KEY) || 'portrait';
+    }
+    function setLayoutMode(mode) {
+        localStorage.setItem(LAYOUT_KEY, mode);
+        document.body.classList.toggle('layout-landscape', mode === 'landscape');
+        if (layoutLabel) layoutLabel.textContent = mode === 'landscape' ? '竖屏' : '横屏';
+        // 触发 resize 以更新房间热点、地图热点等
+        window.dispatchEvent(new Event('resize'));
+    }
+    if (layoutToggle) {
+        layoutToggle.addEventListener('click', () => {
+            const next = getLayoutMode() === 'portrait' ? 'landscape' : 'portrait';
+            setLayoutMode(next);
+        });
+    }
+    // 初始化：应用保存的布局偏好
+    setLayoutMode(getLayoutMode());
+
     // --- 状态管理 ---
     const appState = {
         locations: [],
