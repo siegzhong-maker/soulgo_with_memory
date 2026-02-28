@@ -77,12 +77,28 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             text-align: center;
-            aspect-ratio: 1 / 1.25;
+            min-height: 100px;
+            height: 100%;
             padding: 0.5rem;
             font-size: 11px;
             font-weight: bold;
+        }
+        .cabinet-slot__media {
+            width: 100%;
+            height: 52px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+        .cabinet-slot__media img {
+            max-height: 100%;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
         }
         .cabinet-slot--empty {
             color: #8d7f73;
@@ -90,15 +106,31 @@
         .cabinet-empty-icon {
             font-size: 1.8rem;
             color: #8d7f73;
-            margin-bottom: 0.25rem;
             opacity: 0.6;
         }
-        .cabinet-slot img { 
-            width: 100%;
-            height: auto;
-            max-height: 60%;
-            object-fit: contain;
-            margin-bottom: 4px;
+        /* 橱柜弹窗网格：3 列 4 行等高，格子统一高度 */
+        .cabinet-modal-grid-equal-rows {
+            grid-template-rows: repeat(4, 1fr);
+        }
+        /* 橱柜弹窗网格：3 行等高，格子统一高度（宠物房内嵌用） */
+        .cabinet-grid-equal-rows {
+            grid-template-rows: repeat(3, 1fr);
+        }
+        /* 橱柜物品名称两行截断（Tailwind 未提供 line-clamp 时的备用） */
+        .cabinet-slot .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* 橱柜物品名称三行截断 */
+        .cabinet-slot .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         /* 导航切换动画 */
@@ -841,7 +873,7 @@
 
         <!-- 隐藏容器：承载旅行橱柜与旅行日记内容，正常视图中不展示 -->
         <div id="petroom-hidden-containers" class="hidden">
-            <div id="cabinet-grid" class="cabinet-shelf grid grid-cols-4 grid-rows-3 gap-2 min-h-[240px]">
+            <div id="cabinet-grid" class="cabinet-shelf grid grid-cols-4 grid-rows-3 cabinet-grid-equal-rows gap-2 min-h-[240px]">
                 <!-- 12 格由 JS renderCabinetGrid() 渲染 -->
             </div>
 
@@ -2056,6 +2088,7 @@
     }
 
     // --- 弹层：通用放大查看 ---
+    let lastCabinetBodyHTML = '';
     function openModal(title, contentHTML, variant = 'default') {
         if (!modalOverlay || !modalTitle || !modalBody || !modalPanel) return;
         modalTitle.textContent = title;
@@ -2089,21 +2122,21 @@
             const item = items[i];
             if (item) {
                 // 已解锁
-                const label = item.scene ? item.scene.label : item.location;
+                const { short: shortLabel, full: fullLabel } = getShortLabel(item);
                 // 优先使用场景图，没有则用默认图
                 const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg'; 
                 
                 gridHTML += `
-                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm">
-                        <img src="${imgSrc}" alt="${label}" class="drop-shadow-sm">
-                        <span class="truncate w-full">${label}</span>
+                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer" data-item-index="${i}">
+                        <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
+                        <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
                     </div>
                 `;
             } else {
                 // 未解锁
                 gridHTML += `
                     <div class="cabinet-slot cabinet-slot--empty">
-                        <i class="ph-bold ph-server text-3xl mb-1 opacity-40"></i>
+                        <div class="cabinet-slot__media"><i class="ph-bold ph-server text-3xl cabinet-empty-icon opacity-40"></i></div>
                         <span class="scale-90">去旅行解锁</span>
                     </div>
                 `;
@@ -2124,8 +2157,8 @@
                 
                 ${emptyHint}
                 
-                <!-- 物品网格 -->
-                <div class="grid grid-cols-4 gap-3 overflow-y-auto no-scrollbar pb-4">
+                <!-- 物品网格：固定 3 行等高 -->
+                <div class="grid grid-cols-3 cabinet-modal-grid-equal-rows gap-3 overflow-y-auto no-scrollbar pb-4 flex-1 min-h-0">
                     ${gridHTML}
                 </div>
                 
@@ -2136,8 +2169,51 @@
             </div>
         `;
         
-        // 这里的 variant='cabinet' 已经在 openModal 里处理了 modalPanel 的 class
+        lastCabinetBodyHTML = bodyHTML;
         openModal('旅行橱柜', bodyHTML, 'cabinet');
+        
+        // 点击已收集格子 → 详情层（大图 + 完整名称）
+        modalBody.addEventListener('click', function onCabinetBodyClick(e) {
+            const slot = e.target.closest('.cabinet-slot:not(.cabinet-slot--empty)');
+            if (!slot) return;
+            const idx = slot.getAttribute('data-item-index');
+            if (idx == null) return;
+            const item = appState.cabinetItems[parseInt(idx, 10)];
+            if (item) openCabinetItemDetail(item);
+        }, { once: true });
+    }
+
+    function openCabinetItemDetail(item, fromCabinetModal = true) {
+        const { full: fullLabel } = getShortLabel(item);
+        const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+        const detailHTML = `
+            <div class="flex flex-col items-center gap-4 p-4">
+                <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="max-w-full max-h-[50vh] object-contain rounded-xl shadow">
+                <p class="text-base font-bold text-[#5c4a3a] text-center">${escapeHtml(fullLabel)}</p>
+                <button type="button" class="text-sm text-[#8d7f73] underline hover:opacity-80">返回橱柜</button>
+            </div>
+        `;
+        if (!modalOverlay.classList.contains('hidden')) {
+            modalBody.innerHTML = detailHTML;
+        } else {
+            openModal('纪念品', detailHTML, 'cabinet');
+        }
+        const btn = modalBody.querySelector('button');
+        if (btn) btn.addEventListener('click', () => {
+            if (fromCabinetModal && lastCabinetBodyHTML) {
+                modalBody.innerHTML = lastCabinetBodyHTML;
+                modalBody.addEventListener('click', function onCabinetBodyClick(e) {
+                    const slot = e.target.closest('.cabinet-slot:not(.cabinet-slot--empty)');
+                    if (!slot) return;
+                    const idx = slot.getAttribute('data-item-index');
+                    if (idx == null) return;
+                    const it = appState.cabinetItems[parseInt(idx, 10)];
+                    if (it) openCabinetItemDetail(it, true);
+                }, { once: true });
+            } else {
+                closeModal();
+            }
+        });
     }
 
     function openDiaryModal() {
@@ -2249,6 +2325,16 @@
 
     if (actionCabinet) {
         actionCabinet.addEventListener('click', () => openCabinetModal());
+    }
+    if (cabinetGrid) {
+        cabinetGrid.addEventListener('click', (e) => {
+            const slot = e.target.closest('.cabinet-slot[data-item-index]');
+            if (!slot) return;
+            const idx = slot.getAttribute('data-item-index');
+            if (idx == null) return;
+            const item = appState.cabinetItems[parseInt(idx, 10)];
+            if (item) openCabinetItemDetail(item, false);
+        });
     }
     if (actionDiary) {
         actionDiary.addEventListener('click', () => openDiaryModal());
@@ -3429,7 +3515,7 @@
 
     // --- 辅助函数：在橱柜中新增纪念品 ---
     const CABINET_SLOTS = 12;
-    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon mb-1" width="40" height="40"><span>去旅行解锁</span></div>`;
+    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><div class="cabinet-slot__media"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon" width="40" height="40"></div><span>去旅行解锁</span></div>`;
 
     // --- 记忆墙渲染：随机散落在墙上的拍立得 ---
     function renderMemoryWall() {
@@ -3444,15 +3530,13 @@
         recentItems.forEach((item, index) => {
             if (!item.scene && !item.location) return;
             
-            const label = item.scene ? item.scene.label : item.location;
+            const { short: shortLabel, full: fullLabel } = getShortLabel(item);
             const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
             
             const div = document.createElement('div');
             div.className = 'polaroid-photo';
             
             // 随机位置与角度 (基于 wall 的百分比)
-            // 简单算法：分布在墙面上，利用 index 稍微错开防止完全重叠
-            // wall 是 flex 布局，但 photo 是 absolute，所以 left/top 生效
             const randomX = 10 + (index * 12) + (Math.random() * 10 - 5); 
             const randomY = 10 + (index * 5) + (Math.random() * 20 - 10);
             const rotate = (Math.random() * 24 - 12).toFixed(1);
@@ -3462,12 +3546,9 @@
             div.style.setProperty('--rotate', `${rotate}deg`);
             div.style.zIndex = index + 1;
             
-            // 截取地名
-            const shortLabel = label.split('·')[0] || label;
-
             div.innerHTML = `
-                <img src="${imgSrc}" alt="${label}">
-                <span>${shortLabel}</span>
+                <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}">
+                <span>${escapeHtml(shortLabel)}</span>
             `;
             
             div.addEventListener('click', (e) => {
@@ -3611,10 +3692,10 @@
             const item = list[i];
             if (item && (item.scene || item.location)) {
                 const scene = item.scene;
-                const label = scene ? scene.label : item.location;
-                const img = scene ? `<img src="${scene.image}" alt="${scene.label}" class="w-12 h-12 rounded-xl object-cover mb-1 border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
-                const fallback = scene ? `<span class="text-2xl mb-1 hidden">🧳</span>` : `<span class="text-2xl mb-1">🧳</span>`;
-                html += `<div class="cabinet-slot relative" data-cabinet-item="true">${img}${fallback}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
+                const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+                const img = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                const fallback = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
+                html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${i}"><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
             } else {
                 html += cabinetPlaceholderHTML;
             }
@@ -3626,6 +3707,16 @@
         const div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
+    }
+
+    /** 橱柜展示用：有 scene 用 scene.label；无 scene 时缩短 location（·前一段或前6字+省略号），完整名放 title */
+    function getShortLabel(item) {
+        const full = item.scene ? item.scene.label : (item.location || '');
+        if (item.scene) return { short: full, full };
+        if (!full) return { short: '', full: '' };
+        const idx = full.indexOf('·');
+        const short = idx >= 0 ? full.slice(0, idx).trim() : (full.length > 6 ? full.slice(0, 6) + '…' : full);
+        return { short, full };
     }
 
     function findCabinetItem(scene, location) {
